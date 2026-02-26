@@ -17,6 +17,7 @@ final class AuthViewModel {
 
     var isAuthenticated = false
     var hasCheckedAuth = false
+    var isLoggedIn: Bool { isAuthenticated && phone != "" }
 
     // MARK: - SMS Countdown
 
