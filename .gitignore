@@ -1,0 +1,39 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+*.xcworkspace
+DerivedData/
+build/
+*.pbxuser
+*.perspectivev3
+*.mode1v3
+*.mode2v3
+!default.pbxuser
+!default.perspectivev3
+!default.mode1v3
+!default.mode2v3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SPM
+.build/
+.swiftpm/
+
+# CocoaPods (not used but just in case)
+Pods/
+
+# macOS
+.DS_Store
+*.swp
+*~.nib
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Environment
+.env
