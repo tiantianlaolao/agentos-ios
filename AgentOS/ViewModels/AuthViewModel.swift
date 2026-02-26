@@ -17,7 +17,10 @@ final class AuthViewModel {
 
     var isAuthenticated = false
     var hasCheckedAuth = false
-    var isLoggedIn: Bool { isAuthenticated && phone != "" }
+    /// True only when user completed real login/register (not skip)
+    var hasRealLogin = false
+    var savedPhone = ""
+    var isLoggedIn: Bool { hasRealLogin }
 
     // MARK: - SMS Countdown
 
@@ -34,7 +37,11 @@ final class AuthViewModel {
         do {
             let token = try await DatabaseService.shared.getSetting(key: "auth_token")
             let skipped = try await DatabaseService.shared.getSetting(key: "auth_skipped")
+            let loggedIn = try await DatabaseService.shared.getSetting(key: "auth_loggedIn")
+            let storedPhone = try await DatabaseService.shared.getSetting(key: "auth_phone")
             isAuthenticated = (token != nil && !(token ?? "").isEmpty) || skipped == "true"
+            hasRealLogin = loggedIn == "true"
+            savedPhone = storedPhone ?? ""
         } catch {
             isAuthenticated = false
         }
@@ -61,6 +68,8 @@ final class AuthViewModel {
                let token = data["token"] as? String,
                let userId = data["userId"] as? String {
                 try await saveAuth(userId: userId, phone: trimmedPhone, token: token)
+                hasRealLogin = true
+                savedPhone = trimmedPhone
                 isAuthenticated = true
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Login failed"
@@ -105,6 +114,8 @@ final class AuthViewModel {
                let token = data["token"] as? String,
                let userId = data["userId"] as? String {
                 try await saveAuth(userId: userId, phone: trimmedPhone, token: token)
+                hasRealLogin = true
+                savedPhone = trimmedPhone
                 isAuthenticated = true
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Registration failed"
@@ -156,6 +167,8 @@ final class AuthViewModel {
             // Ignore cleanup errors
         }
         isAuthenticated = false
+        hasRealLogin = false
+        savedPhone = ""
         resetForm()
     }
 

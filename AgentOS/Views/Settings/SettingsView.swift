@@ -136,7 +136,7 @@ struct SettingsView: View {
                         Text(L10n.tr("settings.loggedInAs", ["phone": ""]))
                             .font(.system(size: 13))
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text(authViewModel.phone.isEmpty ? "User" : authViewModel.phone)
+                        Text(authViewModel.savedPhone.isEmpty ? "User" : authViewModel.savedPhone)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(AppTheme.textPrimary)
                     }
