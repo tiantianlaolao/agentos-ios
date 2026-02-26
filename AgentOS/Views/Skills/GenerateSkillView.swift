@@ -32,15 +32,15 @@ struct GenerateSkillView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Describe the skill you want and AI will generate a SKILL.md definition for you.")
+                        Text(L10n.tr("skills.describeSkillPrompt"))
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
 
-                        Text("Description")
+                        Text(L10n.tr("skills.skillDescription"))
                             .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(AppTheme.textSecondary)
 
-                        TextField("e.g. A skill that can translate text between languages", text: $description, axis: .vertical)
+                        TextField(L10n.tr("skills.describeSkillPlaceholder"), text: $description, axis: .vertical)
                             .lineLimit(4...8)
                             .font(AppTheme.bodyFont)
                             .foregroundStyle(AppTheme.textPrimary)
@@ -55,10 +55,10 @@ struct GenerateSkillView: View {
                             HStack(spacing: 8) {
                                 if isGenerating {
                                     ProgressView().tint(.white)
-                                    Text("Generating...")
+                                    Text(L10n.tr("skills.generating"))
                                 } else {
                                     Image(systemName: "sparkles")
-                                    Text("Generate")
+                                    Text(L10n.tr("skills.generate"))
                                 }
                             }
                             .font(AppTheme.bodyFont.weight(.semibold))
@@ -85,11 +85,11 @@ struct GenerateSkillView: View {
                     .padding(AppTheme.paddingLarge)
                 }
             }
-            .navigationTitle("AI Generate Skill")
+            .navigationTitle(L10n.tr("skills.aiGenerateSkill"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L10n.tr("skills.cancel")) { dismiss() }
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
@@ -100,7 +100,7 @@ struct GenerateSkillView: View {
 
     private func previewSection(_ result: GenerateResult) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Preview")
+            Text(L10n.tr("skills.preview"))
                 .font(AppTheme.headlineFont)
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -142,7 +142,7 @@ struct GenerateSkillView: View {
                     if isImporting {
                         ProgressView().tint(.white)
                     } else {
-                        Text("Confirm & Import")
+                        Text(L10n.tr("skills.confirmImport"))
                     }
                 }
                 .font(AppTheme.bodyFont.weight(.semibold))
@@ -161,7 +161,7 @@ struct GenerateSkillView: View {
 
     private func handleGenerate() async {
         guard !description.trimmingCharacters(in: .whitespaces).isEmpty else {
-            errorMessage = "Please describe the skill you want."
+            errorMessage = L10n.tr("skills.describeSkillPrompt")
             return
         }
 

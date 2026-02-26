@@ -23,19 +23,19 @@ struct MemoryView: View {
                     readView
                 }
             }
-            .navigationTitle(String(localized: "Memory"))
+            .navigationTitle(L10n.tr("memory.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if isLoggedIn && isBuiltinMode && !viewModel.isLoading {
                     if viewModel.isEditing {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button(String(localized: "Cancel")) {
+                            Button(L10n.tr("memory.cancel")) {
                                 viewModel.cancelEditing()
                             }
                             .foregroundStyle(AppTheme.textSecondary)
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button(viewModel.isSaving ? String(localized: "Saving...") : String(localized: "Save")) {
+                            Button(viewModel.isSaving ? L10n.tr("memory.saving") : L10n.tr("memory.save")) {
                                 Task { await viewModel.saveMemory() }
                             }
                             .foregroundStyle(AppTheme.primary)
@@ -61,7 +61,7 @@ struct MemoryView: View {
             Image(systemName: "lock.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(AppTheme.textTertiary)
-            Text("Login required to use Memory")
+            Text(L10n.tr("memory.loginRequired"))
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -76,7 +76,7 @@ struct MemoryView: View {
             Image(systemName: "cloud")
                 .font(.system(size: 48))
                 .foregroundStyle(AppTheme.textTertiary)
-            Text("Memory is managed by the external agent in this mode")
+            Text(L10n.tr("memory.externalAgent"))
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -93,7 +93,7 @@ struct MemoryView: View {
                     Image(systemName: "lightbulb")
                         .font(.system(size: 48))
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text("No memory content yet. The AI will learn your preferences over time, or you can edit manually.")
+                    Text(L10n.tr("memory.noContent"))
                         .font(AppTheme.bodyFont)
                         .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -109,12 +109,12 @@ struct MemoryView: View {
                             .textSelection(.enabled)
 
                         if let formatted = viewModel.formattedUpdatedAt {
-                            Text("Updated: \(formatted)")
+                            Text(L10n.tr("memory.updated", ["time": formatted]))
                                 .font(AppTheme.smallFont)
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
 
-                        Text("\(viewModel.charCount) characters")
+                        Text(L10n.tr("memory.characters", ["count": "\(viewModel.charCount)"]))
                             .font(AppTheme.smallFont)
                             .foregroundStyle(AppTheme.textTertiary)
                     }
@@ -139,7 +139,7 @@ struct MemoryView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "square.and.pencil")
-                        Text("Edit")
+                        Text(L10n.tr("memory.edit"))
                     }
                     .font(AppTheme.bodyFont.weight(.semibold))
                     .foregroundStyle(.white)
@@ -165,7 +165,7 @@ struct MemoryView: View {
 
             HStack {
                 Spacer()
-                Text("\(viewModel.charCount) characters")
+                Text(L10n.tr("memory.characters", ["count": "\(viewModel.charCount)"]))
                     .font(AppTheme.smallFont)
                     .foregroundStyle(AppTheme.textTertiary)
             }

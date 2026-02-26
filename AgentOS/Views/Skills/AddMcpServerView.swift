@@ -42,7 +42,7 @@ struct AddMcpServerView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Connect local MCP servers to expose their tools as skills.")
+                        Text(L10n.tr("skills.connectMcpIntro"))
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
 
@@ -66,7 +66,7 @@ struct AddMcpServerView: View {
                             }
 
                             if servers.isEmpty {
-                                Text("No MCP servers configured")
+                                Text(L10n.tr("skills.noMcpServers"))
                                     .font(AppTheme.bodyFont)
                                     .foregroundStyle(AppTheme.textTertiary)
                                     .frame(maxWidth: .infinity)
@@ -83,7 +83,7 @@ struct AddMcpServerView: View {
                             } label: {
                                 HStack(spacing: 6) {
                                     Image(systemName: "plus.circle")
-                                    Text("Add MCP Server")
+                                    Text(L10n.tr("skills.addMcpServer"))
                                 }
                                 .font(AppTheme.captionFont.weight(.semibold))
                                 .foregroundStyle(AppTheme.textSecondary)
@@ -101,11 +101,11 @@ struct AddMcpServerView: View {
                     .padding(AppTheme.paddingLarge)
                 }
             }
-            .navigationTitle("MCP Servers")
+            .navigationTitle(L10n.tr("skills.mcpTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L10n.tr("skills.done")) { dismiss() }
                         .foregroundStyle(AppTheme.primary)
                 }
             }
@@ -129,7 +129,7 @@ struct AddMcpServerView: View {
                         .foregroundStyle(AppTheme.textPrimary)
 
                     if server.toolCount > 0 {
-                        Text("\(server.toolCount) tool\(server.toolCount == 1 ? "" : "s")")
+                        Text("\(server.toolCount) \(L10n.tr("skills.tools"))")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(AppTheme.primary)
                             .padding(.horizontal, 6)
@@ -139,7 +139,7 @@ struct AddMcpServerView: View {
                     }
 
                     if server.system {
-                        Text("System")
+                        Text(L10n.tr("skills.system"))
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppTheme.success)
                             .padding(.horizontal, 6)
@@ -175,10 +175,10 @@ struct AddMcpServerView: View {
 
     private var addFormView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Name")
+            Text(L10n.tr("skills.name"))
                 .font(AppTheme.captionFont.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
-            TextField("e.g. filesystem", text: $name)
+            TextField(L10n.tr("skills.mcpNamePlaceholder"), text: $name)
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .textInputAutocapitalization(.never)
@@ -187,10 +187,10 @@ struct AddMcpServerView: View {
                 .background(AppTheme.background)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
 
-            Text("Command")
+            Text(L10n.tr("skills.command"))
                 .font(AppTheme.captionFont.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
-            TextField("npx", text: $command)
+            TextField(L10n.tr("skills.mcpCommandPlaceholder"), text: $command)
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .textInputAutocapitalization(.never)
@@ -199,10 +199,10 @@ struct AddMcpServerView: View {
                 .background(AppTheme.background)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
 
-            Text("Args")
+            Text(L10n.tr("skills.args"))
                 .font(AppTheme.captionFont.weight(.semibold))
                 .foregroundStyle(AppTheme.textSecondary)
-            TextField("--server, filesystem (comma-separated)", text: $args)
+            TextField(L10n.tr("skills.mcpArgsPlaceholder"), text: $args)
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .textInputAutocapitalization(.never)
@@ -210,7 +210,7 @@ struct AddMcpServerView: View {
                 .padding(10)
                 .background(AppTheme.background)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
-            Text("Comma-separated list of arguments")
+            Text(L10n.tr("skills.commaSeparated"))
                 .font(AppTheme.smallFont)
                 .foregroundStyle(AppTheme.textTertiary)
 
@@ -222,7 +222,7 @@ struct AddMcpServerView: View {
                         if isAdding {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Add Server")
+                            Text(L10n.tr("skills.addServer"))
                         }
                     }
                     .font(AppTheme.bodyFont.weight(.semibold))
@@ -241,7 +241,7 @@ struct AddMcpServerView: View {
                     command = ""
                     args = ""
                 } label: {
-                    Text("Cancel")
+                    Text(L10n.tr("skills.cancel"))
                         .font(AppTheme.bodyFont)
                         .foregroundStyle(AppTheme.textSecondary)
                         .padding(.vertical, 12)

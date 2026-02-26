@@ -20,17 +20,17 @@ struct SkillDetailView: View {
 
     private var auditLabel: String {
         switch skill.audit {
-        case "platform": return "Official"
-        case "ecosystem": return "Reviewed"
-        default: return "Unreviewed"
+        case "platform": return L10n.tr("skillDetail.auditOfficial")
+        case "ecosystem": return L10n.tr("skillDetail.auditReviewed")
+        default: return L10n.tr("skillDetail.auditUnreviewed")
         }
     }
 
     private var auditDescription: String {
         switch skill.audit {
-        case "platform": return "Developed and maintained by the AgentOS team"
-        case "ecosystem": return "Reviewed by the ecosystem maintainers"
-        default: return "Not yet reviewed - use with caution"
+        case "platform": return L10n.tr("skillDetail.auditOfficialDesc")
+        case "ecosystem": return L10n.tr("skillDetail.auditReviewedDesc")
+        default: return L10n.tr("skillDetail.auditUnreviewedDesc")
         }
     }
 
@@ -55,11 +55,11 @@ struct SkillDetailView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .navigationTitle("Skill Detail")
+            .navigationTitle(L10n.tr("skillDetail.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L10n.tr("skillDetail.done")) { dismiss() }
                         .foregroundStyle(AppTheme.primary)
                 }
             }
@@ -82,7 +82,7 @@ struct SkillDetailView: View {
                 .font(AppTheme.titleFont)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text("v\(skill.version) by \(skill.author)")
+            Text("v\(skill.version) \(L10n.tr("skills.by")) \(skill.author)")
                 .font(AppTheme.captionFont)
                 .foregroundStyle(AppTheme.textTertiary)
 
@@ -117,21 +117,21 @@ struct SkillDetailView: View {
 
     private var metadataSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Details")
+            Text(L10n.tr("skillDetail.details"))
                 .font(AppTheme.headlineFont)
                 .foregroundStyle(AppTheme.textPrimary)
 
             HStack {
-                metadataItem(label: "Category", value: skill.category.capitalized)
+                metadataItem(label: L10n.tr("skillDetail.category"), value: skill.category.capitalized)
                 Spacer()
-                metadataItem(label: "Visibility", value: skill.visibility.capitalized)
+                metadataItem(label: L10n.tr("skillDetail.visibility"), value: skill.visibility.capitalized)
                 Spacer()
-                metadataItem(label: "Installs", value: "\(skill.installCount)")
+                metadataItem(label: L10n.tr("skillDetail.installs"), value: "\(skill.installCount)")
             }
 
             if !skill.environments.isEmpty {
                 HStack(spacing: 4) {
-                    Text("Environments:")
+                    Text(L10n.tr("skillDetail.environments") + ":")
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
                     ForEach(skill.environments, id: \.self) { env in
@@ -168,7 +168,7 @@ struct SkillDetailView: View {
         Group {
             if !skill.permissions.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Permissions")
+                    Text(L10n.tr("skillDetail.permissions"))
                         .font(AppTheme.headlineFont)
                         .foregroundStyle(AppTheme.textPrimary)
 
@@ -183,7 +183,7 @@ struct SkillDetailView: View {
                                 .foregroundStyle(AppTheme.textPrimary)
                             Spacer()
                             if isHighRisk(perm) {
-                                Text("High Risk")
+                                Text(L10n.tr("skillDetail.highRisk"))
                                     .font(.system(size: 10, weight: .semibold))
                                     .foregroundStyle(AppTheme.warning)
                                     .padding(.horizontal, 6)
@@ -208,7 +208,7 @@ struct SkillDetailView: View {
         Group {
             if !skill.functions.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Functions (\(skill.functions.count))")
+                    Text("\(L10n.tr("skillDetail.functions")) (\(skill.functions.count))")
                         .font(AppTheme.headlineFont)
                         .foregroundStyle(AppTheme.textPrimary)
 
@@ -235,7 +235,7 @@ struct SkillDetailView: View {
 
     private var configSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Configuration")
+            Text(L10n.tr("skillDetail.configuration"))
                 .font(AppTheme.headlineFont)
                 .foregroundStyle(AppTheme.textPrimary)
 
@@ -296,7 +296,7 @@ struct SkillDetailView: View {
             Button {
                 viewModel.saveConfig(skillName: skill.name)
             } label: {
-                Text(viewModel.isConfigSaved ? "Saved!" : "Save Configuration")
+                Text(viewModel.isConfigSaved ? L10n.tr("skillDetail.savedConfig") : L10n.tr("skillDetail.saveConfiguration"))
                     .font(AppTheme.bodyFont.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -319,7 +319,7 @@ struct SkillDetailView: View {
                     onUninstall()
                     dismiss()
                 } label: {
-                    Text("Uninstall")
+                    Text(L10n.tr("skillDetail.uninstall"))
                         .font(AppTheme.bodyFont.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -332,7 +332,7 @@ struct SkillDetailView: View {
                     onInstall()
                     dismiss()
                 } label: {
-                    Text("Install")
+                    Text(L10n.tr("skillDetail.install"))
                         .font(AppTheme.bodyFont.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

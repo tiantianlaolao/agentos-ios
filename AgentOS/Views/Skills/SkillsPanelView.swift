@@ -33,11 +33,11 @@ struct SkillsPanelView: View {
                     }
                 }
             }
-            .navigationTitle("Skills")
+            .navigationTitle(L10n.tr("skills.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { onClose() }
+                    Button(L10n.tr("skills.done")) { onClose() }
                         .foregroundStyle(AppTheme.primary)
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -100,7 +100,7 @@ struct SkillsPanelView: View {
                     }
                 } label: {
                     VStack(spacing: 6) {
-                        Text(tab.rawValue)
+                        Text(tab == .installed ? L10n.tr("skills.installed") : L10n.tr("skills.library"))
                             .font(AppTheme.bodyFont.weight(viewModel.activeTab == tab ? .semibold : .regular))
                             .foregroundStyle(viewModel.activeTab == tab ? AppTheme.primary : AppTheme.textSecondary)
 
@@ -122,7 +122,7 @@ struct SkillsPanelView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(AppTheme.textTertiary)
-            TextField("Search skills...", text: $viewModel.searchQuery)
+            TextField(L10n.tr("skills.searchPlaceholder"), text: $viewModel.searchQuery)
                 .font(AppTheme.bodyFont)
                 .foregroundStyle(AppTheme.textPrimary)
             if !viewModel.searchQuery.isEmpty {
@@ -186,10 +186,10 @@ struct SkillsPanelView: View {
                     Image(systemName: "puzzlepiece")
                         .font(.system(size: 40))
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text("No installed skills")
+                    Text(L10n.tr("skills.noInstalledSkills"))
                         .font(AppTheme.bodyFont)
                         .foregroundStyle(AppTheme.textSecondary)
-                    Text("Browse the Library to install skills")
+                    Text(L10n.tr("skills.browseLibraryHint"))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textTertiary)
                     Spacer()
@@ -229,7 +229,7 @@ struct SkillsPanelView: View {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         // Featured section
                         if !viewModel.featuredSkills.isEmpty && viewModel.selectedCategory == "all" && viewModel.searchQuery.isEmpty {
-                            Text("Featured")
+                            Text(L10n.tr("skills.featured"))
                                 .font(AppTheme.headlineFont)
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .padding(.horizontal, AppTheme.paddingLarge)
@@ -248,7 +248,7 @@ struct SkillsPanelView: View {
                         }
 
                         // All library skills
-                        Text(viewModel.selectedCategory == "all" ? "All Skills" : viewModel.selectedCategory.capitalized)
+                        Text(viewModel.selectedCategory == "all" ? L10n.tr("skills.allSkills") : viewModel.selectedCategory.capitalized)
                             .font(AppTheme.headlineFont)
                             .foregroundStyle(AppTheme.textPrimary)
                             .padding(.horizontal, AppTheme.paddingLarge)
@@ -274,16 +274,16 @@ struct SkillsPanelView: View {
     private var addSkillMenu: some View {
         Menu {
             Button { viewModel.addSkillMode = .http } label: {
-                Label("Register HTTP Skill", systemImage: "link")
+                Label(L10n.tr("skills.registerHttpSkill"), systemImage: "link")
             }
             Button { viewModel.addSkillMode = .mcp } label: {
-                Label("MCP Servers", systemImage: "server.rack")
+                Label(L10n.tr("skills.mcpServers"), systemImage: "server.rack")
             }
             Button { viewModel.addSkillMode = .skillmd } label: {
-                Label("Import SKILL.md", systemImage: "doc.text")
+                Label(L10n.tr("skills.importSkillMd"), systemImage: "doc.text")
             }
             Button { viewModel.addSkillMode = .generate } label: {
-                Label("AI Generate", systemImage: "sparkles")
+                Label(L10n.tr("skills.aiGenerate"), systemImage: "sparkles")
             }
         } label: {
             Image(systemName: "plus.circle")
@@ -351,7 +351,7 @@ private struct FeaturedSkillCard: View {
                     .multilineTextAlignment(.center)
 
                 if skill.installed {
-                    Text("Installed")
+                    Text(L10n.tr("skills.installedBadge"))
                         .font(AppTheme.smallFont.weight(.medium))
                         .foregroundStyle(AppTheme.success)
                 }
@@ -381,9 +381,9 @@ private struct LibrarySkillRow: View {
 
     private var auditLabel: String {
         switch skill.audit {
-        case "platform": return "Official"
-        case "ecosystem": return "Reviewed"
-        default: return "Unreviewed"
+        case "platform": return L10n.tr("skillDetail.auditOfficial")
+        case "ecosystem": return L10n.tr("skillDetail.auditReviewed")
+        default: return L10n.tr("skillDetail.auditUnreviewed")
         }
     }
 
@@ -433,14 +433,14 @@ private struct LibrarySkillRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 if skill.installed {
-                    Text("Installed")
+                    Text(L10n.tr("skills.installedBadge"))
                         .font(AppTheme.smallFont.weight(.semibold))
                         .foregroundStyle(AppTheme.success)
                 } else {
                     Button {
                         onInstall()
                     } label: {
-                        Text("Install")
+                        Text(L10n.tr("skills.install"))
                             .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 12)

@@ -28,11 +28,11 @@ struct LoginView: View {
 
                     // MARK: - Tab Switcher
                     HStack(spacing: 0) {
-                        tabButton(title: "Login", isSelected: authViewModel.isLogin) {
+                        tabButton(title: L10n.tr("login.loginTab"), isSelected: authViewModel.isLogin) {
                             authViewModel.isLogin = true
                             authViewModel.errorMessage = ""
                         }
-                        tabButton(title: "Register", isSelected: !authViewModel.isLogin) {
+                        tabButton(title: L10n.tr("login.registerTab"), isSelected: !authViewModel.isLogin) {
                             authViewModel.isLogin = false
                             authViewModel.errorMessage = ""
                         }
@@ -45,7 +45,7 @@ struct LoginView: View {
                     // MARK: - Form Fields
                     VStack(spacing: 18) {
                         // Phone
-                        fieldSection(label: "Phone") {
+                        fieldSection(label: L10n.tr("login.phone")) {
                             TextField("13800138000", text: $authViewModel.phone)
                                 .keyboardType(.phonePad)
                                 .textContentType(.telephoneNumber)
@@ -59,7 +59,7 @@ struct LoginView: View {
                         }
 
                         // Password
-                        fieldSection(label: "Password") {
+                        fieldSection(label: L10n.tr("login.password")) {
                             secureField(
                                 text: $authViewModel.password,
                                 isVisible: showPassword,
@@ -70,7 +70,7 @@ struct LoginView: View {
                         // Register-only fields
                         if !authViewModel.isLogin {
                             // Confirm Password
-                            fieldSection(label: "Confirm Password") {
+                            fieldSection(label: L10n.tr("login.confirmPassword")) {
                                 secureField(
                                     text: $authViewModel.confirmPassword,
                                     isVisible: showConfirmPassword,
@@ -79,7 +79,7 @@ struct LoginView: View {
                             }
 
                             // SMS Code
-                            fieldSection(label: "Verification Code") {
+                            fieldSection(label: L10n.tr("login.code")) {
                                 HStack(spacing: 10) {
                                     TextField("123456", text: $authViewModel.smsCode)
                                         .keyboardType(.numberPad)
@@ -95,8 +95,8 @@ struct LoginView: View {
                                         Task { await authViewModel.sendSmsCode() }
                                     } label: {
                                         Text(authViewModel.countdown > 0
-                                             ? "\(authViewModel.countdown)s"
-                                             : "Send Code")
+                                             ? L10n.tr("login.resendIn", ["seconds": "\(authViewModel.countdown)"])
+                                             : L10n.tr("login.sendCode"))
                                             .font(.system(size: 14, weight: .semibold))
                                             .foregroundStyle(.white)
                                             .padding(.horizontal, 14)
@@ -136,7 +136,7 @@ struct LoginView: View {
                                     ProgressView()
                                         .tint(.white)
                                 } else {
-                                    Text(authViewModel.isLogin ? "Login" : "Register")
+                                    Text(authViewModel.isLogin ? L10n.tr("login.submit") : L10n.tr("login.register"))
                                         .font(.system(size: 16, weight: .bold))
                                 }
                             }
@@ -154,7 +154,7 @@ struct LoginView: View {
                         Button {
                             authViewModel.skipLogin()
                         } label: {
-                            Text("Skip Login")
+                            Text(L10n.tr("login.skip"))
                                 .font(.system(size: 14))
                                 .foregroundStyle(AppTheme.textTertiary)
                                 .underline()

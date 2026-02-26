@@ -34,10 +34,10 @@ enum AppTheme {
     static let cornerRadiusLarge: CGFloat = 16
 
     static let paddingSmall: CGFloat = 4
-    static let paddingMedium: CGFloat = 8
-    static let paddingStandard: CGFloat = 12
-    static let paddingLarge: CGFloat = 16
-    static let paddingXLarge: CGFloat = 24
+    static let paddingMedium: CGFloat = 6
+    static let paddingStandard: CGFloat = 10
+    static let paddingLarge: CGFloat = 14
+    static let paddingXLarge: CGFloat = 20
 
     // MARK: - Typography
 
@@ -46,4 +46,13 @@ enum AppTheme {
     static let bodyFont = Font.system(size: 15, weight: .regular)
     static let captionFont = Font.system(size: 13, weight: .regular)
     static let smallFont = Font.system(size: 11, weight: .regular)
+
+    // MARK: - Chat-specific Typography (compact)
+
+    static let chatBodyFont = Font.system(size: 15, weight: .regular)
+    static let chatSmallFont = Font.system(size: 13, weight: .regular)
+    static let chatTimeFont = Font.system(size: 10, weight: .regular)
+    static let chatBubbleRadius: CGFloat = 16
+    static let chatBubbleRadiusSmall: CGFloat = 4
+    static let chatMessageSpacing: CGFloat = 3
 }

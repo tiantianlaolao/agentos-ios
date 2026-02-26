@@ -26,7 +26,7 @@ struct ImportSkillMdView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Import a SKILL.md file to register a new skill definition. You can pick a file or paste the content directly.")
+                        Text(L10n.tr("skills.importSkillMdIntro"))
                             .font(AppTheme.captionFont)
                             .foregroundStyle(AppTheme.textSecondary)
 
@@ -37,7 +37,7 @@ struct ImportSkillMdView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "doc.text")
                                     .foregroundStyle(AppTheme.primary)
-                                Text("Choose File")
+                                Text(L10n.tr("skills.chooseFile"))
                                     .font(AppTheme.bodyFont.weight(.semibold))
                                     .foregroundStyle(AppTheme.primary)
                             }
@@ -51,12 +51,12 @@ struct ImportSkillMdView: View {
                         }
 
                         if !fileName.isEmpty {
-                            Text("Selected: \(fileName)")
+                            Text(L10n.tr("skills.selected", ["name": fileName]))
                                 .font(AppTheme.captionFont)
                                 .foregroundStyle(AppTheme.success)
                         }
 
-                        Text("SKILL.md Content")
+                        Text(L10n.tr("skills.skillMdContent"))
                             .font(AppTheme.captionFont.weight(.semibold))
                             .foregroundStyle(AppTheme.textSecondary)
 
@@ -72,7 +72,7 @@ struct ImportSkillMdView: View {
                                 if !fileName.isEmpty { fileName = "" }
                             }
 
-                        Text("Format: Markdown with # skill-name header, description, ## functions section, and ### function_name subsections.")
+                        Text(L10n.tr("skills.skillMdFormatHint"))
                             .font(AppTheme.smallFont)
                             .foregroundStyle(AppTheme.textTertiary)
 
@@ -89,7 +89,7 @@ struct ImportSkillMdView: View {
                                 if isLoading {
                                     ProgressView().tint(.white)
                                 } else {
-                                    Text("Import Skill")
+                                    Text(L10n.tr("skills.importBtn"))
                                 }
                             }
                             .font(AppTheme.bodyFont.weight(.semibold))
@@ -105,11 +105,11 @@ struct ImportSkillMdView: View {
                     .padding(AppTheme.paddingLarge)
                 }
             }
-            .navigationTitle("Import SKILL.md")
+            .navigationTitle(L10n.tr("skills.skillMdTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L10n.tr("skills.cancel")) { dismiss() }
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
@@ -136,7 +136,7 @@ struct ImportSkillMdView: View {
 
     private func handleSubmit() async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = "Please provide SKILL.md content"
+            errorMessage = L10n.tr("skills.provideSkillMd")
             return
         }
 

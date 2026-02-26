@@ -12,36 +12,42 @@ struct ChatView: View {
             ZStack {
                 AppTheme.background.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Agent hub (collapsible)
-                    if viewModel.showAgentHub {
-                        AgentHubView(
-                            currentMode: viewModel.connectionMode,
-                            isConnected: viewModel.isConnected,
-                            onSelect: { mode in
-                                Task { await viewModel.switchMode(mode) }
+                if viewModel.showAgentHub {
+                    // Full-screen agent hub
+                    AgentHubView(
+                        currentMode: viewModel.connectionMode,
+                        isConnected: viewModel.isConnected,
+                        onSelect: { mode in
+                            Task { await viewModel.switchMode(mode) }
+                            withAnimation(.easeInOut(duration: 0.25)) {
                                 viewModel.showAgentHub = false
                             }
-                        )
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        },
+                        onManageSkills: {
+                            showSkillsPanel = true
+                        }
+                    )
+                    .transition(.opacity)
+                } else {
+                    // Chat interface
+                    VStack(spacing: 0) {
+                        // Connection banner
+                        if !viewModel.isConnected && viewModel.connectionMode != .byok {
+                            reconnectBanner
+                        }
+
+                        // Message list
+                        messageList
+
+                        // Active skill card
+                        if let skill = viewModel.activeSkill {
+                            SkillCardView(skill: skill)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        // Input bar
+                        inputBar
                     }
-
-                    // Connection banner
-                    if !viewModel.isConnected && viewModel.connectionMode != .byok {
-                        reconnectBanner
-                    }
-
-                    // Message list
-                    messageList
-
-                    // Active skill card
-                    if let skill = viewModel.activeSkill {
-                        SkillCardView(skill: skill)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-
-                    // Input bar
-                    inputBar
                 }
             }
             .navigationTitle("AgentOS")
@@ -49,41 +55,44 @@ struct ChatView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
                             viewModel.showAgentHub.toggle()
                         }
                     } label: {
-                        Image(systemName: viewModel.showAgentHub ? "chevron.up" : "square.grid.2x2")
-                            .font(.system(size: 16))
+                        Image(systemName: viewModel.showAgentHub ? "xmark" : "square.grid.2x2")
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(AppTheme.textSecondary)
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        Button {
-                            showSkillsPanel = true
-                        } label: {
-                            Image(systemName: "puzzlepiece")
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-
-                        Menu {
+                if !viewModel.showAgentHub {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 12) {
                             Button {
-                                Task { await viewModel.clearConversation() }
+                                showSkillsPanel = true
                             } label: {
-                                Label(String(localized: "Clear Chat"), systemImage: "trash")
+                                Image(systemName: "puzzlepiece")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(AppTheme.textSecondary)
                             }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppTheme.textSecondary)
+
+                            Menu {
+                                Button {
+                                    Task { await viewModel.clearConversation() }
+                                } label: {
+                                    Label(L10n.tr("chat.clearChat"), systemImage: "trash")
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
                         }
                     }
                 }
             }
             .task {
+                await L10n.shared.loadLocale()
                 await viewModel.connect()
             }
             .sheet(isPresented: $showSkillsPanel) {
@@ -104,12 +113,12 @@ struct ChatView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "wifi.slash")
-                    .font(.system(size: 12))
-                Text("Disconnected. Tap to reconnect.")
+                    .font(.system(size: 11))
+                Text(L10n.tr("chat.disconnected"))
                     .font(AppTheme.smallFont)
             }
             .foregroundStyle(AppTheme.warning)
-            .padding(.vertical, 6)
+            .padding(.vertical, 5)
             .frame(maxWidth: .infinity)
             .background(AppTheme.warning.opacity(0.1))
         }
@@ -121,7 +130,7 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: AppTheme.paddingMedium) {
+                LazyVStack(spacing: AppTheme.chatMessageSpacing) {
                     // Load more indicator
                     if viewModel.hasMore {
                         Button {
@@ -131,7 +140,7 @@ struct ChatView: View {
                                 ProgressView()
                                     .tint(AppTheme.textTertiary)
                             } else {
-                                Text("Load earlier messages")
+                                Text(L10n.tr("chat.loadMore"))
                                     .font(AppTheme.smallFont)
                                     .foregroundStyle(AppTheme.textTertiary)
                             }
@@ -185,11 +194,11 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: AppTheme.paddingMedium) {
-            TextField(String(localized: "Message..."), text: $viewModel.inputText, axis: .vertical)
-                .font(AppTheme.bodyFont)
+            TextField(L10n.tr("chat.inputPlaceholder"), text: $viewModel.inputText, axis: .vertical)
+                .font(AppTheme.chatBodyFont)
                 .foregroundStyle(AppTheme.textPrimary)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.vertical, 9)
                 .background(AppTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .lineLimit(1...5)
@@ -207,7 +216,7 @@ struct ChatView: View {
                 }
             } label: {
                 Image(systemName: viewModel.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
-                    .font(.system(size: 32))
+                    .font(.system(size: 30))
                     .foregroundStyle(
                         viewModel.isStreaming ? AppTheme.error :
                             (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

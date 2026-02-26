@@ -27,28 +27,28 @@ struct RegisterSkillView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        formField(label: "Skill Name *", placeholder: "my-skill", text: $name)
+                        formField(label: L10n.tr("skills.skillName"), placeholder: L10n.tr("skills.skillNamePlaceholder"), text: $name)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
-                        formField(label: "Description", placeholder: "What does this skill do?", text: $description, multiline: true)
+                        formField(label: L10n.tr("skills.description"), placeholder: L10n.tr("skills.descPlaceholder"), text: $description, multiline: true)
 
-                        formField(label: "Endpoint URL *", placeholder: "https://my-server.com/api/skill", text: $endpointUrl)
+                        formField(label: L10n.tr("skills.endpointUrl"), placeholder: L10n.tr("skills.endpointUrlPlaceholder"), text: $endpointUrl)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.URL)
 
-                        Text("Function Definition")
+                        Text(L10n.tr("skills.functionDef"))
                             .font(AppTheme.bodyFont.weight(.semibold))
                             .foregroundStyle(AppTheme.primary)
 
-                        formField(label: "Function Name *", placeholder: "do_something", text: $funcName)
+                        formField(label: L10n.tr("skills.funcName"), placeholder: L10n.tr("skills.funcNamePlaceholder"), text: $funcName)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
-                        formField(label: "Function Description", placeholder: "Describe what this function does", text: $funcDesc)
+                        formField(label: L10n.tr("skills.funcDesc"), placeholder: L10n.tr("skills.funcDescPlaceholder"), text: $funcDesc)
 
-                        Text("Your endpoint will receive POST requests with {\"function\": \"<name>\", \"args\": {...}} and should return a JSON response.")
+                        Text(L10n.tr("skills.httpHint"))
                             .font(AppTheme.smallFont)
                             .foregroundStyle(AppTheme.textTertiary)
 
@@ -66,7 +66,7 @@ struct RegisterSkillView: View {
                                     ProgressView()
                                         .tint(.white)
                                 } else {
-                                    Text("Register Skill")
+                                    Text(L10n.tr("skills.registerBtn"))
                                 }
                             }
                             .font(AppTheme.bodyFont.weight(.semibold))
@@ -82,11 +82,11 @@ struct RegisterSkillView: View {
                     .padding(AppTheme.paddingLarge)
                 }
             }
-            .navigationTitle("Register External Skill")
+            .navigationTitle(L10n.tr("skills.registerExternalSkill"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L10n.tr("skills.cancel")) { dismiss() }
                         .foregroundStyle(AppTheme.textSecondary)
                 }
             }
@@ -124,13 +124,13 @@ struct RegisterSkillView: View {
         let trimmedFuncName = funcName.trimmingCharacters(in: .whitespaces)
 
         guard !trimmedName.isEmpty, !trimmedUrl.isEmpty, !trimmedFuncName.isEmpty else {
-            errorMessage = "Name, endpoint URL, and at least one function are required."
+            errorMessage = L10n.tr("skills.nameRequired")
             return
         }
 
         let namePattern = /^[a-z0-9-]+$/
         guard trimmedName.wholeMatch(of: namePattern) != nil else {
-            errorMessage = "Skill name must contain only lowercase letters, digits, and hyphens."
+            errorMessage = L10n.tr("skills.nameInvalid")
             return
         }
 

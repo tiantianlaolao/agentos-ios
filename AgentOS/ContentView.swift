@@ -18,6 +18,7 @@ struct ContentView: View {
             }
         }
         .task {
+            await L10n.shared.loadLocale()
             await authViewModel.loadAuth()
         }
     }
@@ -34,19 +35,19 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             ChatView(viewModel: chatViewModel)
                 .tabItem {
-                    Label(String(localized: "Chat"), systemImage: "bubble.left")
+                    Label(L10n.tr("tabs.chat"), systemImage: "bubble.left")
                 }
                 .tag(0)
 
             MemoryView()
                 .tabItem {
-                    Label(String(localized: "Memory"), systemImage: "lightbulb")
+                    Label(L10n.tr("tabs.memory"), systemImage: "lightbulb")
                 }
                 .tag(1)
 
             SettingsView(authViewModel: authViewModel)
                 .tabItem {
-                    Label(String(localized: "Settings"), systemImage: "gearshape")
+                    Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
                 }
                 .tag(2)
         }

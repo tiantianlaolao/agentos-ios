@@ -6,11 +6,13 @@ struct SettingsView: View {
 
     // MARK: - Data
 
-    private let modes: [(key: ConnectionMode, title: String, desc: String, icon: String, color: Color)] = [
-        (.builtin, "内置助理", "免费使用", "cpu", Color(hex: "#2d7d46")),                    // L10n: settings.builtin / settings.builtinDesc
-        (.openclaw, "OpenClaw", "使用 OpenClaw 智能体，托管或自建", "bolt.fill", Color(hex: "#c26a1b")), // L10n: settings.openclaw / settings.openclawDesc
-        (.copaw, "CoPaw", "连接 CoPaw / AgentScope 智能体", "pawprint.fill", Color(hex: "#1b6bc2")),  // L10n: settings.copaw / settings.copawDesc
-    ]
+    private var modes: [(key: ConnectionMode, titleKey: String, descKey: String, icon: String, color: Color)] {
+        [
+            (.builtin, "settings.builtin", "settings.builtinDesc", "cpu", Color(hex: "#2d7d46")),
+            (.openclaw, "settings.openclaw", "settings.openclawDesc", "bolt.fill", Color(hex: "#c26a1b")),
+            (.copaw, "settings.copaw", "settings.copawDesc", "pawprint.fill", Color(hex: "#1b6bc2")),
+        ]
+    }
 
     private let models: [(key: String, label: String)] = [
         ("deepseek", "DeepSeek"),
@@ -45,7 +47,7 @@ struct SettingsView: View {
                         .padding(.bottom, 16)
 
                     // Connection Mode
-                    settingsSection(header: "连接模式") { // L10n: settings.connectionMode
+                    settingsSection(header: L10n.tr("settings.connectionMode")) {
                         connectionModeCards
                     }
 
@@ -53,7 +55,7 @@ struct SettingsView: View {
                     modeConfigSection
 
                     // Language
-                    settingsSection(header: "语言") { // L10n: settings.language
+                    settingsSection(header: L10n.tr("settings.language")) {
                         languageRow
                     }
 
@@ -79,7 +81,7 @@ struct SettingsView: View {
                 }
             }
             .background(AppTheme.background)
-            .navigationTitle("设置") // L10n: settings.title
+            .navigationTitle(L10n.tr("settings.title"))
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await viewModel.loadSettings()
@@ -92,20 +94,20 @@ struct SettingsView: View {
     private var currentModeBar: some View {
         let modeInfo = modes.first { $0.key == viewModel.mode }
         let modeColor = modeInfo?.color ?? AppTheme.success
-        let modeName = modeInfo?.title ?? viewModel.mode.rawValue
+        let modeName = L10n.tr(modeInfo?.titleKey ?? "settings.builtin")
 
         return HStack(spacing: 10) {
             Circle()
                 .fill(modeColor)
                 .frame(width: 8, height: 8)
-            Text("当前连接") // L10n: settings.currentMode
+            Text(L10n.tr("settings.currentMode"))
                 .font(.system(size: 13))
                 .foregroundStyle(AppTheme.textTertiary)
             Text(modeName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(modeColor)
             if viewModel.mode == .builtin && viewModel.builtinSubMode == "byok" {
-                Text("(自带 Key)") // L10n: settings.builtinByok
+                Text("(\(L10n.tr("settings.builtinByok")))")
                     .font(.system(size: 11))
                     .foregroundStyle(modeColor.opacity(0.8))
             }
@@ -131,10 +133,10 @@ struct SettingsView: View {
                         .font(.system(size: 36))
                         .foregroundStyle(AppTheme.primary)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("已登录") // L10n: settings.loggedInAs
+                        Text(L10n.tr("settings.loggedInAs", ["phone": ""]))
                             .font(.system(size: 13))
                             .foregroundStyle(AppTheme.textTertiary)
-                        Text(authViewModel.phone.isEmpty ? "用户" : authViewModel.phone)
+                        Text(authViewModel.phone.isEmpty ? "User" : authViewModel.phone)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(AppTheme.textPrimary)
                     }
@@ -150,12 +152,9 @@ struct SettingsView: View {
                         .font(.system(size: 36))
                         .foregroundStyle(AppTheme.textTertiary)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("未登录") // L10n: not logged in
+                        Text(L10n.tr("settings.notLoggedIn"))
                             .font(.system(size: 15, weight: .medium))
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("匿名模式，部分功能受限") // L10n: anonymous mode
-                            .font(.system(size: 12))
-                            .foregroundStyle(AppTheme.textTertiary)
                     }
                     Spacer()
                 }
@@ -198,10 +197,10 @@ struct SettingsView: View {
 
                         // Text
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(m.title)
+                            Text(L10n.tr(m.titleKey))
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text(m.desc)
+                            Text(L10n.tr(m.descKey))
                                 .font(.system(size: 12))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
@@ -243,11 +242,11 @@ struct SettingsView: View {
     private var builtinConfig: some View {
         VStack(spacing: 0) {
             // Sub-mode toggle: Free / BYOK
-            settingsSection(header: "模式") { // L10n: mode
+            settingsSection(header: L10n.tr("settings.mode")) {
                 VStack(spacing: 0) {
                     subModeRow(
-                        title: "免费额度", // L10n: settings.builtinFree
-                        subtitle: "免费使用", // L10n: settings.builtinDesc
+                        title: L10n.tr("settings.builtinFree"),
+                        subtitle: L10n.tr("settings.builtinDesc"),
                         selected: viewModel.builtinSubMode == "free",
                         isLast: false
                     ) {
@@ -255,8 +254,8 @@ struct SettingsView: View {
                     }
                     Divider().background(AppTheme.divider).padding(.leading, 52)
                     subModeRow(
-                        title: "自带 Key", // L10n: settings.builtinByok
-                        subtitle: "使用自己的 API Key，无限制", // L10n: settings.byokDesc
+                        title: L10n.tr("settings.builtinByok"),
+                        subtitle: L10n.tr("settings.byokDesc"),
                         selected: viewModel.builtinSubMode == "byok",
                         isLast: true
                     ) {
@@ -267,10 +266,10 @@ struct SettingsView: View {
 
             if viewModel.builtinSubMode == "free" {
                 // Model dropdown
-                settingsSection(header: "模型选择") { // L10n: settings.model
+                settingsSection(header: L10n.tr("settings.model")) {
                     dropdownRow(
                         icon: "brain",
-                        label: "模型", // L10n: settings.model
+                        label: L10n.tr("settings.model"),
                         options: models,
                         selected: viewModel.selectedModel
                     ) {
@@ -286,12 +285,12 @@ struct SettingsView: View {
     // MARK: - BYOK Config
 
     private var byokConfig: some View {
-        settingsSection(header: "AI 服务商配置") { // L10n: settings.provider
+        settingsSection(header: L10n.tr("settings.provider")) {
             VStack(spacing: 0) {
                 // Provider dropdown
                 dropdownRow(
                     icon: "server.rack",
-                    label: "AI 服务商", // L10n: settings.provider
+                    label: L10n.tr("settings.provider"),
                     options: providers.map { (key: $0.key.rawValue, label: $0.label) },
                     selected: viewModel.provider.rawValue
                 ) {
@@ -306,11 +305,11 @@ struct SettingsView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(AppTheme.textTertiary)
                         .frame(width: 24)
-                    Text("API Key") // L10n: settings.apiKey
+                    Text(L10n.tr("settings.apiKey"))
                         .font(.system(size: 15))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
-                    SecureField("输入你的 API Key", text: $viewModel.apiKey) // L10n: settings.apiKeyPlaceholder
+                    SecureField(L10n.tr("settings.apiKeyPlaceholder"), text: $viewModel.apiKey)
                         .font(.system(size: 14))
                         .foregroundStyle(AppTheme.textPrimary)
                         .multilineTextAlignment(.trailing)
@@ -327,11 +326,11 @@ struct SettingsView: View {
     private var openclawConfig: some View {
         VStack(spacing: 0) {
             // Sub-mode: Hosted vs Self-hosted
-            settingsSection(header: "部署模式") { // L10n: deploy mode
+            settingsSection(header: L10n.tr("settings.deployMode")) {
                 VStack(spacing: 0) {
                     subModeRow(
-                        title: "托管模式", // L10n: settings.openclawHosted
-                        subtitle: "平台提供，免费试用 50 条", // L10n: settings.openclawHostedDesc
+                        title: L10n.tr("settings.openclawHosted"),
+                        subtitle: L10n.tr("settings.openclawHostedDesc"),
                         selected: viewModel.openclawSubMode == "hosted",
                         isLast: false
                     ) {
@@ -339,8 +338,8 @@ struct SettingsView: View {
                     }
                     Divider().background(AppTheme.divider).padding(.leading, 52)
                     subModeRow(
-                        title: "自建直连", // L10n: settings.openclawSelfhosted
-                        subtitle: "连接你自己的 Gateway", // L10n: settings.openclawSelfhostedDesc
+                        title: L10n.tr("settings.openclawSelfhosted"),
+                        subtitle: L10n.tr("settings.openclawSelfhostedDesc"),
                         selected: viewModel.openclawSubMode == "selfhosted",
                         isLast: true
                     ) {
@@ -350,17 +349,16 @@ struct SettingsView: View {
             }
 
             if viewModel.openclawSubMode == "hosted" {
-                // Hosted: Invitation code + Quota (THIS IS WHERE HOSTED GOES)
                 if authViewModel.isLoggedIn {
                     hostedSection
                 } else {
-                    settingsSection(header: "托管服务") { // L10n: hosted service
+                    settingsSection(header: L10n.tr("settings.hostedOpenclaw")) {
                         HStack(spacing: 12) {
                             Image(systemName: "person.badge.key")
                                 .font(.system(size: 14))
                                 .foregroundStyle(AppTheme.primary)
                                 .frame(width: 24)
-                            Text("请先登录以使用托管模式") // L10n: settings.hostedLoginRequired
+                            Text(L10n.tr("settings.hostedLoginRequired"))
                                 .font(.system(size: 14))
                                 .foregroundStyle(AppTheme.primary)
                             Spacer()
@@ -370,21 +368,20 @@ struct SettingsView: View {
                     }
                 }
             } else {
-                // Self-hosted: Gateway URL + Token
-                settingsSection(header: "Gateway 配置") { // L10n: gateway config
+                settingsSection(header: L10n.tr("settings.openclawUrl")) {
                     VStack(spacing: 0) {
                         textFieldRow(
                             icon: "link",
-                            label: "Gateway 地址", // L10n: settings.openclawUrl
-                            placeholder: "ws://你的公网IP:18789", // L10n: settings.openclawUrlPlaceholder
+                            label: L10n.tr("settings.openclawUrl"),
+                            placeholder: L10n.tr("settings.openclawUrlPlaceholder"),
                             text: $viewModel.openclawUrl,
                             isSecure: false
                         )
                         Divider().background(AppTheme.divider).padding(.leading, 52)
                         textFieldRow(
                             icon: "lock.fill",
-                            label: "Token", // L10n: settings.openclawToken
-                            placeholder: "输入 Gateway 认证 Token", // L10n: settings.openclawTokenPlaceholder
+                            label: L10n.tr("settings.openclawToken"),
+                            placeholder: L10n.tr("settings.openclawTokenPlaceholder"),
                             text: $viewModel.openclawToken,
                             isSecure: true
                         )
@@ -399,11 +396,11 @@ struct SettingsView: View {
     private var copawConfig: some View {
         VStack(spacing: 0) {
             // Sub-mode
-            settingsSection(header: "部署模式") { // L10n: deploy mode
+            settingsSection(header: L10n.tr("settings.deployMode")) {
                 VStack(spacing: 0) {
                     subModeRow(
-                        title: "托管模式", // L10n: settings.copawHosted
-                        subtitle: "使用平台提供的 CoPaw 服务，无需配置", // L10n: settings.copawHostedDesc
+                        title: L10n.tr("settings.copawHosted"),
+                        subtitle: L10n.tr("settings.copawHostedDesc"),
                         selected: viewModel.copawSubMode == "hosted",
                         isLast: false
                     ) {
@@ -411,8 +408,8 @@ struct SettingsView: View {
                     }
                     Divider().background(AppTheme.divider).padding(.leading, 52)
                     subModeRow(
-                        title: "自建直连", // L10n: settings.copawSelfhosted
-                        subtitle: "连接你自己的 CoPaw / AgentScope 实例", // L10n: settings.copawSelfhostedDesc
+                        title: L10n.tr("settings.copawSelfhosted"),
+                        subtitle: L10n.tr("settings.copawSelfhostedDesc"),
                         selected: viewModel.copawSubMode == "selfhosted",
                         isLast: true
                     ) {
@@ -422,20 +419,20 @@ struct SettingsView: View {
             }
 
             if viewModel.copawSubMode == "selfhosted" {
-                settingsSection(header: "CoPaw 配置") { // L10n: copaw config
+                settingsSection(header: L10n.tr("settings.copawUrl")) {
                     VStack(spacing: 0) {
                         textFieldRow(
                             icon: "link",
-                            label: "CoPaw 地址", // L10n: settings.copawUrl
-                            placeholder: "http://你的IP:8088", // L10n: settings.copawUrlPlaceholder
+                            label: L10n.tr("settings.copawUrl"),
+                            placeholder: L10n.tr("settings.copawUrlPlaceholder"),
                             text: $viewModel.copawUrl,
                             isSecure: false
                         )
                         Divider().background(AppTheme.divider).padding(.leading, 52)
                         textFieldRow(
                             icon: "lock.fill",
-                            label: "Token", // L10n: settings.copawToken
-                            placeholder: "输入认证 Token（可选）", // L10n: settings.copawTokenPlaceholder
+                            label: L10n.tr("settings.copawToken"),
+                            placeholder: L10n.tr("settings.copawTokenPlaceholder"),
                             text: $viewModel.copawToken,
                             isSecure: true
                         )
@@ -448,7 +445,7 @@ struct SettingsView: View {
     // MARK: - Hosted Section (OpenClaw > Hosted)
 
     private var hostedSection: some View {
-        settingsSection(header: "托管服务") { // L10n: hosted service
+        settingsSection(header: L10n.tr("settings.hostedOpenclaw")) {
             if viewModel.hostedActivated {
                 VStack(spacing: 8) {
                     // Status row
@@ -458,7 +455,7 @@ struct SettingsView: View {
                             .foregroundStyle(AppTheme.success)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("已激活") // L10n: activated
+                            Text(L10n.tr("settings.activated"))
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(AppTheme.success)
 
@@ -467,12 +464,12 @@ struct SettingsView: View {
                                     ProgressView()
                                         .scaleEffect(0.7)
                                         .tint(AppTheme.warning)
-                                    Text("实例启动中...") // L10n: settings.hostedProvisioning
+                                    Text(L10n.tr("settings.instanceProvisioning"))
                                         .font(.system(size: 12))
                                         .foregroundStyle(AppTheme.warning)
                                 }
                             } else if viewModel.hostedInstanceStatus == "error" {
-                                Text("实例启动失败，请联系管理员") // L10n: settings.hostedError
+                                Text(L10n.tr("settings.hostedError"))
                                     .font(.system(size: 12))
                                     .foregroundStyle(AppTheme.error)
                             }
@@ -485,13 +482,10 @@ struct SettingsView: View {
                     // Quota bar
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("试用额度") // L10n: quota
+                            Text(L10n.tr("settings.hostedQuota", ["used": "\(viewModel.hostedQuotaUsed)", "total": "\(viewModel.hostedQuotaTotal)"]))
                                 .font(.system(size: 13))
-                                .foregroundStyle(AppTheme.textTertiary)
-                            Spacer()
-                            Text("\(viewModel.hostedQuotaUsed) / \(viewModel.hostedQuotaTotal)")
-                                .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(AppTheme.textSecondary)
+                            Spacer()
                         }
 
                         GeometryReader { geo in
@@ -515,7 +509,7 @@ struct SettingsView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(AppTheme.textTertiary)
                             .frame(width: 24)
-                        Text("输入邀请码激活托管服务") // L10n: enter invitation code
+                        Text(L10n.tr("settings.enterInvitationCode"))
                             .font(.system(size: 14))
                             .foregroundStyle(AppTheme.textSecondary)
                         Spacer()
@@ -543,7 +537,7 @@ struct SettingsView: View {
                                         .tint(.white)
                                         .scaleEffect(0.8)
                                 } else {
-                                    Text("激活") // L10n: settings.hostedActivate
+                                    Text(L10n.tr("settings.activate"))
                                         .font(.system(size: 14, weight: .medium))
                                 }
                             }
@@ -580,11 +574,12 @@ struct SettingsView: View {
     private var languageRow: some View {
         dropdownRow(
             icon: "globe",
-            label: "语言", // L10n: settings.language
+            label: L10n.tr("settings.language"),
             options: languages,
             selected: viewModel.locale
         ) {
             viewModel.locale = $0
+            L10n.shared.setLocale($0)
         }
     }
 
@@ -602,9 +597,9 @@ struct SettingsView: View {
                 } else if viewModel.showSaved {
                     Image(systemName: "checkmark")
                         .font(.system(size: 15, weight: .semibold))
-                    Text("已保存") // L10n: settings.saved
+                    Text(L10n.tr("settings.savedDone"))
                 } else {
-                    Text("保存") // L10n: settings.save
+                    Text(L10n.tr("settings.save"))
                 }
             }
             .font(.system(size: 16, weight: .semibold))
@@ -620,7 +615,7 @@ struct SettingsView: View {
     // MARK: - Version
 
     private var versionInfo: some View {
-        Text("AgentOS iOS v1.0.0") // L10n: settings.version
+        Text("AgentOS iOS v1.0.0")
             .font(.system(size: 12))
             .foregroundStyle(AppTheme.textTertiary)
             .frame(maxWidth: .infinity)
@@ -632,7 +627,7 @@ struct SettingsView: View {
         Button {
             Task { await authViewModel.logout() }
         } label: {
-            Text("退出登录") // L10n: settings.logout
+            Text(L10n.tr("settings.logout"))
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(AppTheme.error)
                 .frame(maxWidth: .infinity)
@@ -648,7 +643,7 @@ struct SettingsView: View {
 
     // MARK: - Reusable Components
 
-    /// Section container with optional header — Telegram-style grouped card
+    /// Section container with optional header
     private func settingsSection<Content: View>(header: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(header)
@@ -665,7 +660,7 @@ struct SettingsView: View {
         .padding(.top, 16)
     }
 
-    /// Sub-mode radio row (hosted/selfhosted, free/byok)
+    /// Sub-mode radio row
     private func subModeRow(title: String, subtitle: String, selected: Bool, isLast: Bool, action: @escaping () -> Void) -> some View {
         Button(action: {
             withAnimation(.easeInOut(duration: 0.15)) {
@@ -703,7 +698,7 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
-    /// Dropdown row using Menu — native iOS popover
+    /// Dropdown row using Menu
     private func dropdownRow(icon: String, label: String, options: [(key: String, label: String)], selected: String, onChange: @escaping (String) -> Void) -> some View {
         let selectedLabel = options.first(where: { $0.key == selected })?.label ?? selected
 
@@ -782,7 +777,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - TextField Style (kept for backward compat)
+// MARK: - TextField Style
 
 struct SettingsTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
