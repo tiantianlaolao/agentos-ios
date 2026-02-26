@@ -6,7 +6,7 @@ final class HostedAPIService: Sendable {
 
     private let baseURL: String
 
-    init(baseURL: String = "http://150.109.157.27:3100") {
+    init(baseURL: String = "http://43.154.188.177:3100") {
         self.baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 

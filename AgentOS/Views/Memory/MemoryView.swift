@@ -178,9 +178,12 @@ struct MemoryView: View {
         let token = try? await DatabaseService.shared.getSetting(key: "auth_token")
         let skipped = try? await DatabaseService.shared.getSetting(key: "auth_skipped")
         let loggedIn = try? await DatabaseService.shared.getSetting(key: "auth_loggedIn")
+        let userId = try? await DatabaseService.shared.getSetting(key: "auth_userId")
         isLoggedIn = (loggedIn == "true" && token != nil && !(token ?? "").isEmpty)
 
-        let mode = try? await DatabaseService.shared.getSetting(key: "connection_mode")
+        // Read mode with user-specific key
+        let userKey = (userId != nil && !userId!.isEmpty) ? "\(userId!):mode" : "mode"
+        let mode = try? await DatabaseService.shared.getSetting(key: userKey)
         isBuiltinMode = (mode == nil || mode == "builtin")
 
         // If user skipped login, they're authenticated but not "logged in" for memory

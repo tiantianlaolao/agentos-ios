@@ -30,7 +30,7 @@ final class SettingsViewModel {
 
     // App
     var locale: String = "zh"
-    var serverUrl: String = "http://150.109.157.27:3100"
+    var serverUrl: String = "http://43.154.188.177:3100"
 
     // UI
     var isSaving: Bool = false
@@ -38,25 +38,40 @@ final class SettingsViewModel {
 
     private let db = DatabaseService.shared
     private var pollTask: Task<Void, Never>?
+    private var currentUserId: String = ""
+
+    /// Build a user-specific settings key
+    private func ukey(_ key: String) -> String {
+        guard !currentUserId.isEmpty else { return key }
+        return "\(currentUserId):\(key)"
+    }
 
     // MARK: - Load
 
     func loadSettings() async {
         do {
-            if let v = try await db.getSetting(key: "mode") { mode = ConnectionMode(rawValue: v) ?? .builtin }
-            if let v = try await db.getSetting(key: "builtinSubMode") { builtinSubMode = v }
-            if let v = try await db.getSetting(key: "provider") { provider = LLMProvider(rawValue: v) ?? .deepseek }
-            if let v = try await db.getSetting(key: "apiKey") { apiKey = v }
-            if let v = try await db.getSetting(key: "selectedModel") { selectedModel = v.isEmpty ? "deepseek" : v }
-            if let v = try await db.getSetting(key: "openclawSubMode") { openclawSubMode = v }
-            if let v = try await db.getSetting(key: "openclawUrl") { openclawUrl = v }
-            if let v = try await db.getSetting(key: "openclawToken") { openclawToken = v }
-            if let v = try await db.getSetting(key: "copawSubMode") { copawSubMode = v }
-            if let v = try await db.getSetting(key: "copawUrl") { copawUrl = v }
-            if let v = try await db.getSetting(key: "copawToken") { copawToken = v }
-            if let v = try await db.getSetting(key: "locale") { locale = v }
-            if let v = try await db.getSetting(key: "serverUrl"), !v.isEmpty { serverUrl = v }
-            if let v = try await db.getSetting(key: "hostedActivated") { hostedActivated = v == "true" }
+            // Load userId first (auth keys are global)
+            if let uid = try await db.getSetting(key: "auth_userId"), !uid.isEmpty {
+                currentUserId = uid
+            } else {
+                currentUserId = ""
+            }
+
+            // Load user-specific settings
+            if let v = try await db.getSetting(key: ukey("mode")) { mode = ConnectionMode(rawValue: v) ?? .builtin }
+            if let v = try await db.getSetting(key: ukey("builtinSubMode")) { builtinSubMode = v }
+            if let v = try await db.getSetting(key: ukey("provider")) { provider = LLMProvider(rawValue: v) ?? .deepseek }
+            if let v = try await db.getSetting(key: ukey("apiKey")) { apiKey = v }
+            if let v = try await db.getSetting(key: ukey("selectedModel")) { selectedModel = v.isEmpty ? "deepseek" : v }
+            if let v = try await db.getSetting(key: ukey("openclawSubMode")) { openclawSubMode = v }
+            if let v = try await db.getSetting(key: ukey("openclawUrl")) { openclawUrl = v }
+            if let v = try await db.getSetting(key: ukey("openclawToken")) { openclawToken = v }
+            if let v = try await db.getSetting(key: ukey("copawSubMode")) { copawSubMode = v }
+            if let v = try await db.getSetting(key: ukey("copawUrl")) { copawUrl = v }
+            if let v = try await db.getSetting(key: ukey("copawToken")) { copawToken = v }
+            if let v = try await db.getSetting(key: ukey("locale")) { locale = v }
+            if let v = try await db.getSetting(key: ukey("serverUrl")), !v.isEmpty { serverUrl = v }
+            if let v = try await db.getSetting(key: ukey("hostedActivated")) { hostedActivated = v == "true" }
         } catch {
             print("[Settings] Load error: \(error)")
         }
@@ -70,18 +85,18 @@ final class SettingsViewModel {
     func saveSettings() async {
         isSaving = true
         do {
-            try await db.setSetting(key: "mode", value: mode.rawValue)
-            try await db.setSetting(key: "builtinSubMode", value: builtinSubMode)
-            try await db.setSetting(key: "provider", value: provider.rawValue)
-            try await db.setSetting(key: "apiKey", value: apiKey)
-            try await db.setSetting(key: "selectedModel", value: selectedModel)
-            try await db.setSetting(key: "openclawSubMode", value: openclawSubMode)
-            try await db.setSetting(key: "openclawUrl", value: openclawUrl)
-            try await db.setSetting(key: "openclawToken", value: openclawToken)
-            try await db.setSetting(key: "copawSubMode", value: copawSubMode)
-            try await db.setSetting(key: "copawUrl", value: copawUrl)
-            try await db.setSetting(key: "copawToken", value: copawToken)
-            try await db.setSetting(key: "locale", value: locale)
+            try await db.setSetting(key: ukey("mode"), value: mode.rawValue)
+            try await db.setSetting(key: ukey("builtinSubMode"), value: builtinSubMode)
+            try await db.setSetting(key: ukey("provider"), value: provider.rawValue)
+            try await db.setSetting(key: ukey("apiKey"), value: apiKey)
+            try await db.setSetting(key: ukey("selectedModel"), value: selectedModel)
+            try await db.setSetting(key: ukey("openclawSubMode"), value: openclawSubMode)
+            try await db.setSetting(key: ukey("openclawUrl"), value: openclawUrl)
+            try await db.setSetting(key: ukey("openclawToken"), value: openclawToken)
+            try await db.setSetting(key: ukey("copawSubMode"), value: copawSubMode)
+            try await db.setSetting(key: ukey("copawUrl"), value: copawUrl)
+            try await db.setSetting(key: ukey("copawToken"), value: copawToken)
+            try await db.setSetting(key: ukey("locale"), value: locale)
         } catch {
             print("[Settings] Save error: \(error)")
         }
@@ -103,12 +118,14 @@ final class SettingsViewModel {
             let service = HostedAPIService(baseURL: serverUrl)
             let status = try await service.getStatus(authToken: token)
             hostedActivated = status.activated
-            hostedQuotaUsed = status.quotaUsed
-            hostedQuotaTotal = status.quotaTotal
-            hostedInstanceStatus = status.instanceStatus ?? "ready"
+            if let account = status.account {
+                hostedQuotaUsed = account.quotaUsed
+                hostedQuotaTotal = account.quotaTotal
+                hostedInstanceStatus = account.instanceStatus ?? "ready"
+            }
 
             if hostedActivated {
-                try await db.setSetting(key: "hostedActivated", value: "true")
+                try await db.setSetting(key: ukey("hostedActivated"), value: "true")
             }
 
             // Poll if provisioning
@@ -132,7 +149,7 @@ final class SettingsViewModel {
             let service = HostedAPIService(baseURL: serverUrl)
             _ = try await service.redeemCode(invitationCode.trimmed, authToken: token)
             hostedActivated = true
-            try await db.setSetting(key: "hostedActivated", value: "true")
+            try await db.setSetting(key: ukey("hostedActivated"), value: "true")
             invitationCode = ""
             await fetchHostedStatus()
         } catch {
@@ -150,9 +167,11 @@ final class SettingsViewModel {
                 do {
                     let service = HostedAPIService(baseURL: serverUrl)
                     let status = try await service.getStatus(authToken: token)
-                    hostedInstanceStatus = status.instanceStatus ?? "ready"
-                    hostedQuotaUsed = status.quotaUsed
-                    hostedQuotaTotal = status.quotaTotal
+                    if let account = status.account {
+                        hostedInstanceStatus = account.instanceStatus ?? "ready"
+                        hostedQuotaUsed = account.quotaUsed
+                        hostedQuotaTotal = account.quotaTotal
+                    }
                 } catch { break }
             }
         }

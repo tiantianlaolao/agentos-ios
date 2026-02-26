@@ -29,6 +29,8 @@ final class SkillsViewModel {
     var activeTab: SkillsTab = .installed
     var selectedLibrarySkill: SkillLibraryItem?
     var addSkillMode: AddSkillMode?
+    var currentMode: ConnectionMode = .builtin
+    var openclawSubMode: String = "hosted"
 
     // Skill config
     var configFields: [SkillConfigField] = []
@@ -50,6 +52,39 @@ final class SkillsViewModel {
     }
 
     private weak var wsService: WebSocketService?
+
+    /// Whether the current mode supports skill library (install/uninstall)
+    /// Only builtin and OpenClaw hosted have a library
+    var hasLibrary: Bool {
+        switch currentMode {
+        case .builtin, .byok:
+            return true
+        case .openclaw:
+            return openclawSubMode == "hosted"
+        case .copaw:
+            return false
+        }
+    }
+
+    /// Whether skills can be toggled (enabled/disabled) in this mode
+    var canToggleSkills: Bool {
+        switch currentMode {
+        case .builtin, .byok, .openclaw:
+            return true
+        case .copaw:
+            return false
+        }
+    }
+
+    /// Whether this mode uses an agent adapter (skills returned are all "installed")
+    private var isAdapterMode: Bool {
+        switch currentMode {
+        case .openclaw, .copaw:
+            return true
+        case .builtin, .byok:
+            return false
+        }
+    }
 
     func setup(wsService: WebSocketService) {
         self.wsService = wsService
@@ -102,6 +137,31 @@ final class SkillsViewModel {
         }
     }
 
+    /// Clear all cached skill data (call on mode switch)
+    func clearSkills() {
+        installedSkills = []
+        librarySkills = []
+        searchQuery = ""
+        selectedCategory = "all"
+        activeTab = .installed
+        errorMessage = ""
+    }
+
+    /// Refresh skills for current connection (with retry if not connected yet)
+    func refreshSkills() {
+        Task {
+            // Wait for connection if not yet ready (up to 3s)
+            for _ in 0..<30 {
+                if wsService?.isConnected == true { break }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            requestSkillList()
+            if hasLibrary {
+                requestLibrary()
+            }
+        }
+    }
+
     func requestSkillList() {
         guard let ws = wsService, ws.isConnected else { return }
         isLoading = true
@@ -110,6 +170,7 @@ final class SkillsViewModel {
     }
 
     func requestLibrary() {
+        guard hasLibrary else { return }
         guard let ws = wsService, ws.isConnected else { return }
         isLibraryLoading = true
         let msg = WSMessage(type: .skillLibraryRequest)
@@ -117,6 +178,7 @@ final class SkillsViewModel {
     }
 
     func toggleSkill(name: String, enabled: Bool) {
+        guard canToggleSkills else { return }
         guard let ws = wsService, ws.isConnected else { return }
         let payload = SkillTogglePayload(skillName: name, enabled: enabled)
         let dict = encodeToDictionary(payload)
@@ -187,7 +249,9 @@ final class SkillsViewModel {
     // MARK: - Filtered data
 
     var filteredInstalledSkills: [SkillManifestInfo] {
-        var result = installedSkills
+        // For adapter modes (OpenClaw/CoPaw), all returned skills are "installed"
+        // For builtin mode, filter by installed == true
+        var result = isAdapterMode ? installedSkills : installedSkills.filter { $0.installed == true }
         if !searchQuery.isEmpty {
             let q = searchQuery.lowercased()
             result = result.filter {

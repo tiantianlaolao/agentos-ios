@@ -17,6 +17,7 @@ struct ChatView: View {
                     currentMode: viewModel.connectionMode,
                     isConnected: viewModel.isConnected,
                     onSelect: { mode in
+                        skillsViewModel.clearSkills()
                         Task { await viewModel.switchMode(mode) }
                         withAnimation(.easeInOut(duration: 0.25)) {
                             viewModel.showAgentHub = false
@@ -60,6 +61,7 @@ struct ChatView: View {
             SkillsPanelView(
                 viewModel: skillsViewModel,
                 wsService: viewModel.wsService,
+                mode: viewModel.connectionMode,
                 onClose: { showSkillsPanel = false }
             )
         }

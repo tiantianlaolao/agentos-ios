@@ -23,9 +23,9 @@ final class MemoryViewModel {
         isLoading = true
         errorMessage = ""
         do {
-            let response = try await service.getMemory(authToken: token)
-            memoryText = response.memory
-            updatedAt = response.updatedAt
+            let data = try await service.getMemory(authToken: token)
+            memoryText = data?.content ?? ""
+            updatedAt = data?.updatedAt
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -48,8 +48,8 @@ final class MemoryViewModel {
         isSaving = true
         errorMessage = ""
         do {
-            let response = try await service.saveMemory(content: editText, authToken: token)
-            if response.success {
+            let ok = try await service.saveMemory(content: editText, authToken: token)
+            if ok {
                 memoryText = editText
                 updatedAt = ISO8601DateFormatter().string(from: Date())
                 isEditing = false

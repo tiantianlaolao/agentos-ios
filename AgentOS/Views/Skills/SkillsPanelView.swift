@@ -3,9 +3,10 @@ import SwiftUI
 struct SkillsPanelView: View {
     @Bindable var viewModel: SkillsViewModel
     let wsService: WebSocketService
+    let mode: ConnectionMode
     var onClose: () -> Void
 
-    @State private var serverUrl = "http://150.109.157.27:3100"
+    @State private var serverUrl = "http://43.154.188.177:3100"
     @State private var authToken = ""
 
     var body: some View {
@@ -14,19 +15,21 @@ struct SkillsPanelView: View {
                 AppTheme.background.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Tab selector
-                    tabSelector
+                    // Tab selector (only show if mode has library)
+                    if viewModel.hasLibrary {
+                        tabSelector
+                    }
 
                     // Search bar
                     searchBar
 
                     // Category filter (library tab only)
-                    if viewModel.activeTab == .library {
+                    if viewModel.activeTab == .library && viewModel.hasLibrary {
                         categoryChips
                     }
 
                     // Content
-                    if viewModel.activeTab == .installed {
+                    if viewModel.activeTab == .installed || !viewModel.hasLibrary {
                         installedList
                     } else {
                         libraryContent
@@ -40,8 +43,18 @@ struct SkillsPanelView: View {
                     Button(L10n.tr("skills.done")) { onClose() }
                         .foregroundStyle(AppTheme.primary)
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    addSkillMenu
+                ToolbarItemGroup(placement: .primaryAction) {
+                    // Refresh button
+                    Button {
+                        viewModel.refreshSkills()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundStyle(AppTheme.primary)
+                    }
+                    // Add skill menu (only for modes with library)
+                    if viewModel.hasLibrary {
+                        addSkillMenu
+                    }
                 }
             }
             .sheet(item: $viewModel.selectedLibrarySkill) { skill in
@@ -83,9 +96,13 @@ struct SkillsPanelView: View {
         }
         .task {
             authToken = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""
+            let userId = (try? await DatabaseService.shared.getSetting(key: "auth_userId")) ?? ""
+            let ukey = userId.isEmpty ? "openclawSubMode" : "\(userId):openclawSubMode"
+            let subMode = (try? await DatabaseService.shared.getSetting(key: ukey)) ?? "hosted"
+            viewModel.currentMode = mode
+            viewModel.openclawSubMode = subMode
             viewModel.setup(wsService: wsService)
-            viewModel.requestSkillList()
-            viewModel.requestLibrary()
+            viewModel.refreshSkills()
         }
     }
 
@@ -189,9 +206,11 @@ struct SkillsPanelView: View {
                     Text(L10n.tr("skills.noInstalledSkills"))
                         .font(AppTheme.bodyFont)
                         .foregroundStyle(AppTheme.textSecondary)
-                    Text(L10n.tr("skills.browseLibraryHint"))
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
+                    if viewModel.hasLibrary {
+                        Text(L10n.tr("skills.browseLibraryHint"))
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
                     Spacer()
                 }
             } else {
@@ -200,6 +219,7 @@ struct SkillsPanelView: View {
                         ForEach(viewModel.filteredInstalledSkills) { skill in
                             InstalledSkillRow(
                                 skill: skill,
+                                canToggle: viewModel.canToggleSkills,
                                 onToggle: { enabled in
                                     viewModel.toggleSkill(name: skill.name, enabled: enabled)
                                 }
@@ -296,6 +316,7 @@ struct SkillsPanelView: View {
 
 private struct InstalledSkillRow: View {
     let skill: SkillManifestInfo
+    let canToggle: Bool
     let onToggle: (Bool) -> Void
 
     var body: some View {
@@ -316,12 +337,19 @@ private struct InstalledSkillRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Toggle("", isOn: Binding(
-                get: { skill.enabled },
-                set: { onToggle($0) }
-            ))
-            .labelsHidden()
-            .tint(AppTheme.primary)
+            if canToggle {
+                Toggle("", isOn: Binding(
+                    get: { skill.enabled },
+                    set: { onToggle($0) }
+                ))
+                .labelsHidden()
+                .tint(AppTheme.primary)
+            } else {
+                // Read-only status indicator
+                Circle()
+                    .fill(skill.enabled ? AppTheme.success : AppTheme.textTertiary)
+                    .frame(width: 8, height: 8)
+            }
         }
         .padding(12)
         .background(AppTheme.surface)

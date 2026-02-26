@@ -34,11 +34,19 @@ struct ErrorResponse: Codable, Sendable {
 
 // MARK: - Hosted
 
+/// Server returns `{ activated: Bool, account: { ... } | null }`
 struct HostedStatusResponse: Codable, Sendable {
     let activated: Bool
+    let account: HostedAccount?
+}
+
+struct HostedAccount: Codable, Sendable {
+    let userId: String?
     let quotaUsed: Int
     let quotaTotal: Int
     var instanceStatus: String?
+    var port: Int?
+    var instanceToken: String?
 }
 
 struct RedeemCodeRequest: Codable, Sendable {
@@ -52,15 +60,22 @@ struct RedeemCodeResponse: Codable, Sendable {
 
 // MARK: - Memory
 
-struct MemoryResponse: Codable, Sendable {
-    let memory: String
+/// Server returns `{ ok: Bool, data: { content: String, updatedAt: String? } | null }`
+struct MemoryResponseWrapper: Codable, Sendable {
+    let ok: Bool
+    let data: MemoryData?
+}
+
+struct MemoryData: Codable, Sendable {
+    let content: String
     let updatedAt: String?
 }
 
 struct MemorySaveRequest: Codable, Sendable {
-    let memory: String
+    let content: String
 }
 
-struct MemorySaveResponse: Codable, Sendable {
-    let success: Bool
+/// Server returns `{ ok: Bool }` for save
+struct MemorySaveResponseWrapper: Codable, Sendable {
+    let ok: Bool
 }

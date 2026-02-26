@@ -6,12 +6,13 @@ final class MemoryAPIService: Sendable {
 
     private let baseURL: String
 
-    init(baseURL: String = "http://150.109.157.27:3100") {
+    init(baseURL: String = "http://43.154.188.177:3100") {
         self.baseURL = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
     /// GET /memory — retrieve user memory content.
-    func getMemory(authToken: String) async throws -> MemoryResponse {
+    /// Server returns `{ ok: true, data: { content, updatedAt } | null }`.
+    func getMemory(authToken: String) async throws -> MemoryData? {
         guard let url = URL(string: "\(baseURL)/memory") else {
             throw MemoryAPIError.invalidURL
         }
@@ -22,11 +23,14 @@ final class MemoryAPIService: Sendable {
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw MemoryAPIError.requestFailed
         }
-        return try JSONDecoder().decode(MemoryResponse.self, from: data)
+        let wrapper = try JSONDecoder().decode(MemoryResponseWrapper.self, from: data)
+        guard wrapper.ok else { throw MemoryAPIError.requestFailed }
+        return wrapper.data
     }
 
     /// POST /memory — save user memory content.
-    func saveMemory(content: String, authToken: String) async throws -> MemorySaveResponse {
+    /// Server returns `{ ok: true }`.
+    func saveMemory(content: String, authToken: String) async throws -> Bool {
         guard let url = URL(string: "\(baseURL)/memory") else {
             throw MemoryAPIError.invalidURL
         }
@@ -35,14 +39,15 @@ final class MemoryAPIService: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
 
-        let body = MemorySaveRequest(memory: content)
+        let body = MemorySaveRequest(content: content)
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw MemoryAPIError.requestFailed
         }
-        return try JSONDecoder().decode(MemorySaveResponse.self, from: data)
+        let wrapper = try JSONDecoder().decode(MemorySaveResponseWrapper.self, from: data)
+        return wrapper.ok
     }
 
     enum MemoryAPIError: Error, LocalizedError {

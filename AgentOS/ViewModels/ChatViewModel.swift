@@ -46,6 +46,11 @@ final class ChatViewModel {
 
     // MARK: - Constants
 
+    /// Build user-specific settings key
+    private func ukey(_ key: String) -> String {
+        currentUserId != "anonymous" ? "\(currentUserId):\(key)" : key
+    }
+
     private let pageSize = 50
     private let cleanupThreshold = 500
     private let cleanupKeep = 200
@@ -56,6 +61,8 @@ final class ChatViewModel {
     private var currentAssistantId: String?
     private var streamBuffer = ""
     private var currentUserId = "anonymous"
+    /// True when OpenClaw mode uses WebSocket server proxy (empty URL, admin user)
+    private var openclawProxyMode = false
 
     // Services (wsService exposed for skills panel integration)
     let wsService = WebSocketService()
@@ -84,7 +91,7 @@ final class ChatViewModel {
 
     func loadSettings() async {
         do {
-            // Load user ID
+            // Load user ID (auth keys are global)
             if let userId = try await DatabaseService.shared.getSetting(key: "auth_userId"),
                !userId.isEmpty {
                 currentUserId = userId
@@ -92,20 +99,23 @@ final class ChatViewModel {
                 currentUserId = "anonymous"
             }
 
-            // Load mode
-            if let modeStr = try await DatabaseService.shared.getSetting(key: "mode"),
+            // User-specific key helper
+            func ukey(_ key: String) -> String {
+                currentUserId != "anonymous" ? "\(currentUserId):\(key)" : key
+            }
+
+            // Load user-specific settings
+            if let modeStr = try await DatabaseService.shared.getSetting(key: ukey("mode")),
                let mode = ConnectionMode(rawValue: modeStr) {
                 connectionMode = mode
             }
 
-            // Load provider
-            if let providerStr = try await DatabaseService.shared.getSetting(key: "provider"),
+            if let providerStr = try await DatabaseService.shared.getSetting(key: ukey("provider")),
                let provider = LLMProvider(rawValue: providerStr) {
                 selectedProvider = provider
             }
 
-            // Load model
-            if let model = try await DatabaseService.shared.getSetting(key: "selectedModel") {
+            if let model = try await DatabaseService.shared.getSetting(key: ukey("selectedModel")) {
                 selectedModel = model
             }
         } catch {
@@ -209,7 +219,8 @@ final class ChatViewModel {
         resetStreamingState()
         connectionMode = mode
         Task {
-            try? await DatabaseService.shared.setSetting(key: "mode", value: mode.rawValue)
+            let key = currentUserId != "anonymous" ? "\(currentUserId):mode" : "mode"
+            try? await DatabaseService.shared.setSetting(key: key, value: mode.rawValue)
         }
         await connect()
     }
@@ -219,23 +230,23 @@ final class ChatViewModel {
 
         Task {
             let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
-            let apiKey = try? await DatabaseService.shared.getSetting(key: "apiKey")
+            let apiKey = try? await DatabaseService.shared.getSetting(key: ukey("apiKey"))
             let deviceId = await getOrCreateDeviceId()
 
             options.authToken = authToken
             options.deviceId = deviceId
 
             if connectionMode == .copaw {
-                let copawUrl = try? await DatabaseService.shared.getSetting(key: "copawUrl")
-                let copawToken = try? await DatabaseService.shared.getSetting(key: "copawToken")
-                let copawSubMode = try? await DatabaseService.shared.getSetting(key: "copawSubMode")
+                let copawUrl = try? await DatabaseService.shared.getSetting(key: ukey("copawUrl"))
+                let copawToken = try? await DatabaseService.shared.getSetting(key: ukey("copawToken"))
+                let copawSubMode = try? await DatabaseService.shared.getSetting(key: ukey("copawSubMode"))
                 options.copawUrl = copawUrl
                 options.copawToken = copawToken
                 options.copawHosted = copawSubMode == "hosted"
             }
 
             if connectionMode == .builtin {
-                let builtinSubMode = try? await DatabaseService.shared.getSetting(key: "builtinSubMode")
+                let builtinSubMode = try? await DatabaseService.shared.getSetting(key: ukey("builtinSubMode"))
                 if builtinSubMode == "byok" {
                     options.provider = selectedProvider
                     options.apiKey = apiKey
@@ -249,13 +260,21 @@ final class ChatViewModel {
 
     private func connectOpenClaw() async {
         do {
-            let openclawUrl = try await DatabaseService.shared.getSetting(key: "openclawUrl") ?? ""
-            let openclawToken = try await DatabaseService.shared.getSetting(key: "openclawToken") ?? ""
+            let openclawUrl = try await DatabaseService.shared.getSetting(key: ukey("openclawUrl")) ?? ""
+            let openclawToken = try await DatabaseService.shared.getSetting(key: ukey("openclawToken")) ?? ""
+            let openclawSubMode = try await DatabaseService.shared.getSetting(key: ukey("openclawSubMode")) ?? "hosted"
 
-            guard !openclawUrl.isEmpty else {
-                errorMessage = "OpenClaw URL not configured"
+            if openclawUrl.isEmpty {
+                // Empty URL: use WebSocket to server (server proxy mode for admin users)
+                openclawProxyMode = true
+                connectWebSocketForOpenClaw(
+                    openclawUrl: openclawUrl,
+                    openclawToken: openclawToken,
+                    openclawHosted: openclawSubMode == "hosted"
+                )
                 return
             }
+            openclawProxyMode = false
 
             openClawService.configure(url: openclawUrl, token: openclawToken)
             try await openClawService.ensureConnected()
@@ -266,10 +285,31 @@ final class ChatViewModel {
         }
     }
 
+    /// Connect via WebSocket in OpenClaw mode (server proxy for admin users with empty URL)
+    private func connectWebSocketForOpenClaw(openclawUrl: String, openclawToken: String, openclawHosted: Bool) {
+        Task {
+            let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
+            let deviceId = await getOrCreateDeviceId()
+
+            var options = WebSocketService.ConnectOptions()
+            options.authToken = authToken
+            options.deviceId = deviceId
+            options.openclawUrl = openclawUrl
+            options.openclawToken = openclawToken
+            options.openclawHosted = openclawHosted
+
+            wsService.connect(mode: .openclaw, options: options)
+        }
+    }
+
     func reconnect() {
         switch connectionMode {
         case .openclaw:
-            openClawService.reconnectNow()
+            if openclawProxyMode {
+                wsService.reconnectNow()
+            } else {
+                openClawService.reconnectNow()
+            }
         case .byok:
             isConnected = true
         default:
@@ -345,7 +385,17 @@ final class ChatViewModel {
             await sendBYOK(text: text, convId: convId, history: history)
 
         case .openclaw:
-            await sendOpenClaw(text: text, convId: convId)
+            if openclawProxyMode {
+                // Server proxy mode: route through WebSocket like builtin/copaw
+                startStreamTimeout()
+                wsService.sendChat(
+                    conversationId: convId,
+                    content: text,
+                    history: history
+                )
+            } else {
+                await sendOpenClaw(text: text, convId: convId)
+            }
         }
     }
 
@@ -359,7 +409,11 @@ final class ChatViewModel {
             case .builtin, .copaw:
                 wsService.sendChatStop(conversationId: convId)
             case .openclaw:
-                Task { await openClawService.abortChat() }
+                if openclawProxyMode {
+                    wsService.sendChatStop(conversationId: convId)
+                } else {
+                    Task { await openClawService.abortChat() }
+                }
             case .byok:
                 byokStreamTask?.cancel()
                 byokStreamTask = nil
@@ -512,6 +566,8 @@ final class ChatViewModel {
         switch message.type {
         case .connected:
             isConnected = true
+            // Request skill list on connection (like Android does)
+            wsService.send(WSMessage(type: .skillListRequest))
 
         case .chatChunk:
             if let payload = message.payload?.dictValue,

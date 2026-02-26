@@ -24,7 +24,7 @@ final class WebSocketService {
 
     // MARK: - Configuration
 
-    private let defaultURL = "ws://150.109.157.27:3100/ws"
+    private let defaultURL = "ws://43.154.188.177:3100/ws"
     private var serverURL: String
 
     // MARK: - Private state
@@ -60,7 +60,7 @@ final class WebSocketService {
     // MARK: - Init
 
     init(url: String? = nil) {
-        self.serverURL = url ?? "ws://150.109.157.27:3100/ws"
+        self.serverURL = url ?? "ws://43.154.188.177:3100/ws"
         self.session = URLSession(configuration: .default)
     }
 

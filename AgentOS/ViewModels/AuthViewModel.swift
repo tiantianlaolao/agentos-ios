@@ -29,7 +29,7 @@ final class AuthViewModel {
 
     // MARK: - Private
 
-    private let baseURL = "http://150.109.157.27:3100"
+    private let baseURL = "http://43.154.188.177:3100"
 
     // MARK: - Auth Actions
 
