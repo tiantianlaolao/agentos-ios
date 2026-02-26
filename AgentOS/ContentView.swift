@@ -1,44 +1,32 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var isAuthenticated = false
-    @State private var hasCheckedAuth = false
+    @State private var authViewModel = AuthViewModel()
 
     var body: some View {
         Group {
-            if !hasCheckedAuth {
-                // Loading
+            if !authViewModel.hasCheckedAuth {
                 ZStack {
                     AppTheme.background.ignoresSafeArea()
                     ProgressView()
                         .tint(AppTheme.primary)
                 }
-            } else if isAuthenticated {
-                MainTabView()
+            } else if authViewModel.isAuthenticated {
+                MainTabView(authViewModel: authViewModel)
             } else {
-                LoginView(isAuthenticated: $isAuthenticated)
+                LoginView(authViewModel: authViewModel)
             }
         }
         .task {
-            await checkAuth()
+            await authViewModel.loadAuth()
         }
-    }
-
-    private func checkAuth() async {
-        // Check for stored auth token
-        do {
-            let token = try await DatabaseService.shared.getSetting(key: "auth_token")
-            isAuthenticated = token != nil
-        } catch {
-            isAuthenticated = false
-        }
-        hasCheckedAuth = true
     }
 }
 
 // MARK: - Main Tab View
 
 struct MainTabView: View {
+    @Bindable var authViewModel: AuthViewModel
     @State private var selectedTab = 0
 
     var body: some View {
@@ -55,7 +43,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            SettingsView()
+            SettingsView(authViewModel: authViewModel)
                 .tabItem {
                     Label(String(localized: "Settings"), systemImage: "gearshape")
                 }
