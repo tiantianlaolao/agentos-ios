@@ -1,0 +1,53 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    # Setup API key
+    api_key = app_store_connect_api_key(
+      key_id: "GCUK756CLY",
+      issuer_id: "ff0ebed6-af79-487f-a9a9-4625e2d7ddcb",
+      key_filepath: File.expand_path("~/.appstoreconnect/AuthKey_GCUK756CLY.p8"),
+      in_house: false
+    )
+
+    # Get latest build number and increment
+    latest_build = latest_testflight_build_number(api_key: api_key) rescue 0
+    increment_build_number(
+      build_number: latest_build + 1,
+      xcodeproj: "AgentOS.xcodeproj"
+    )
+
+    # Build the app (automatic signing)
+    build_app(
+      scheme: "AgentOS",
+      export_method: "app-store",
+      output_directory: "./build",
+      output_name: "AgentOS.ipa",
+      clean: true,
+      include_bitcode: false,
+      export_xcargs: "-allowProvisioningUpdates"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+
+    puts "Successfully uploaded to TestFlight!"
+  end
+
+  desc "Just build (no upload)"
+  lane :build_only do
+    build_app(
+      scheme: "AgentOS",
+      export_method: "development",
+      output_directory: "./build",
+      output_name: "AgentOS.ipa",
+      clean: true,
+      skip_codesigning: true
+    )
+  end
+end
