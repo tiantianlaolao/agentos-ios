@@ -4,10 +4,12 @@ struct SettingsView: View {
     @Bindable var authViewModel: AuthViewModel
     @State private var viewModel = SettingsViewModel()
 
-    private let modes: [(key: ConnectionMode, title: String, desc: String, color: Color)] = [
-        (.builtin, "Built-in Agent", "Zero config, powered by DeepSeek", Color(hex: "#2d7d46")),
-        (.openclaw, "OpenClaw", "Connect to OpenClaw Agent", Color(hex: "#c26a1b")),
-        (.copaw, "CoPaw", "Connect to CoPaw Agent", Color(hex: "#1b6bc2")),
+    // MARK: - Data
+
+    private let modes: [(key: ConnectionMode, title: String, desc: String, icon: String, color: Color)] = [
+        (.builtin, "内置助理", "免费使用", "cpu", Color(hex: "#2d7d46")),                    // L10n: settings.builtin / settings.builtinDesc
+        (.openclaw, "OpenClaw", "使用 OpenClaw 智能体，托管或自建", "bolt.fill", Color(hex: "#c26a1b")), // L10n: settings.openclaw / settings.openclawDesc
+        (.copaw, "CoPaw", "连接 CoPaw / AgentScope 智能体", "pawprint.fill", Color(hex: "#1b6bc2")),  // L10n: settings.copaw / settings.copawDesc
     ]
 
     private let models: [(key: String, label: String)] = [
@@ -31,39 +33,53 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.paddingLarge) {
-                    // Current mode indicator
+                VStack(spacing: 0) {
+                    // Current mode indicator bar
                     currentModeBar
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
 
-                    // Account info
+                    // Account section
                     accountSection
+                        .padding(.bottom, 16)
 
                     // Connection Mode
-                    sectionHeader("Connection Mode")
-                    connectionModeSection
+                    settingsSection(header: "连接模式") { // L10n: settings.connectionMode
+                        connectionModeCards
+                    }
 
-                    // Mode-specific config
+                    // Mode-specific configuration
                     modeConfigSection
 
                     // Language
-                    sectionHeader("Language")
-                    languageSection
+                    settingsSection(header: "语言") { // L10n: settings.language
+                        languageRow
+                    }
 
                     // Save button
                     saveButton
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
 
                     // Version
                     versionInfo
+                        .padding(.top, 16)
 
                     // Logout
                     if authViewModel.isLoggedIn {
                         logoutButton
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 32)
+                    } else {
+                        Spacer()
+                            .frame(height: 32)
                     }
                 }
-                .padding(AppTheme.paddingLarge)
             }
             .background(AppTheme.background)
-            .navigationTitle(String(localized: "Settings"))
+            .navigationTitle("设置") // L10n: settings.title
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await viewModel.loadSettings()
@@ -76,95 +92,137 @@ struct SettingsView: View {
     private var currentModeBar: some View {
         let modeInfo = modes.first { $0.key == viewModel.mode }
         let modeColor = modeInfo?.color ?? AppTheme.success
-        return HStack(spacing: 8) {
+        let modeName = modeInfo?.title ?? viewModel.mode.rawValue
+
+        return HStack(spacing: 10) {
             Circle()
                 .fill(modeColor)
                 .frame(width: 8, height: 8)
-            Text("Current:")
-                .font(AppTheme.captionFont)
-                .foregroundStyle(AppTheme.textSecondary)
-            Text(modeInfo?.title ?? viewModel.mode.rawValue)
-                .font(AppTheme.captionFont)
+            Text("当前连接") // L10n: settings.currentMode
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.textTertiary)
+            Text(modeName)
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(modeColor)
             if viewModel.mode == .builtin && viewModel.builtinSubMode == "byok" {
-                Text("(BYOK)")
-                    .font(AppTheme.smallFont)
-                    .foregroundStyle(modeColor)
+                Text("(自带 Key)") // L10n: settings.builtinByok
+                    .font(.system(size: 11))
+                    .foregroundStyle(modeColor.opacity(0.8))
             }
             Spacer()
         }
-        .padding(AppTheme.paddingStandard)
-        .background(modeColor.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(modeColor.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
-                .stroke(modeColor.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(modeColor.opacity(0.2), lineWidth: 0.5)
         )
     }
 
-    // MARK: - Account
+    // MARK: - Account Section
 
     private var accountSection: some View {
         Group {
             if authViewModel.isLoggedIn {
-                HStack {
+                HStack(spacing: 12) {
                     Image(systemName: "person.circle.fill")
+                        .font(.system(size: 36))
                         .foregroundStyle(AppTheme.primary)
-                    Text(authViewModel.phone)
-                        .font(AppTheme.bodyFont)
-                        .foregroundStyle(AppTheme.textPrimary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("已登录") // L10n: settings.loggedInAs
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Text(authViewModel.phone.isEmpty ? "用户" : authViewModel.phone)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
                     Spacer()
                 }
-                .padding(AppTheme.paddingStandard)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                .padding(.horizontal, 16)
             } else {
-                Text("Not logged in (anonymous mode)")
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textTertiary)
+                HStack(spacing: 12) {
+                    Image(systemName: "person.circle")
+                        .font(.system(size: 36))
+                        .foregroundStyle(AppTheme.textTertiary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("未登录") // L10n: not logged in
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("匿名模式，部分功能受限") // L10n: anonymous mode
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(AppTheme.surface)
+                .padding(.horizontal, 16)
             }
         }
     }
 
-    // MARK: - Connection Mode
+    // MARK: - Connection Mode Cards
 
-    private var connectionModeSection: some View {
-        VStack(spacing: 8) {
-            ForEach(modes, id: \.key) { m in
+    private var connectionModeCards: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(modes.enumerated()), id: \.element.key) { index, m in
                 Button {
-                    viewModel.mode = m.key
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        viewModel.mode = m.key
+                    }
                 } label: {
-                    HStack {
-                        Circle()
-                            .fill(m.color)
-                            .frame(width: 10, height: 10)
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 12) {
+                        // Radio circle
+                        ZStack {
+                            Circle()
+                                .stroke(viewModel.mode == m.key ? AppTheme.primary : AppTheme.textTertiary.opacity(0.5), lineWidth: 1.5)
+                                .frame(width: 20, height: 20)
+                            if viewModel.mode == m.key {
+                                Circle()
+                                    .fill(AppTheme.primary)
+                                    .frame(width: 10, height: 10)
+                            }
+                        }
+
+                        // Icon
+                        Image(systemName: m.icon)
+                            .font(.system(size: 15))
+                            .foregroundStyle(m.color)
+                            .frame(width: 24)
+
+                        // Text
+                        VStack(alignment: .leading, spacing: 1) {
                             Text(m.title)
-                                .font(AppTheme.bodyFont)
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundStyle(AppTheme.textPrimary)
                             Text(m.desc)
-                                .font(AppTheme.smallFont)
+                                .font(.system(size: 12))
                                 .foregroundStyle(AppTheme.textTertiary)
                         }
                         Spacer()
-                        if viewModel.mode == m.key {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(AppTheme.primary)
-                        }
                     }
-                    .padding(AppTheme.paddingStandard)
-                    .background(viewModel.mode == m.key ? AppTheme.primary.opacity(0.1) : AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
-                            .stroke(viewModel.mode == m.key ? AppTheme.primary.opacity(0.5) : Color.clear, lineWidth: 1)
-                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(viewModel.mode == m.key ? AppTheme.primary.opacity(0.06) : Color.clear)
+                }
+                .buttonStyle(.plain)
+
+                if index < modes.count - 1 {
+                    Divider()
+                        .background(AppTheme.divider)
+                        .padding(.leading, 52)
                 }
             }
         }
     }
 
-    // MARK: - Mode Config
+    // MARK: - Mode Config Section
 
     @ViewBuilder
     private var modeConfigSection: some View {
@@ -180,27 +238,44 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Built-in Agent Config
+
     private var builtinConfig: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Sub mode: free vs byok
-            sectionHeader("Mode")
-            HStack(spacing: 8) {
-                subModeButton(title: "Free", selected: viewModel.builtinSubMode == "free") {
-                    viewModel.builtinSubMode = "free"
-                }
-                subModeButton(title: "BYOK", selected: viewModel.builtinSubMode == "byok") {
-                    viewModel.builtinSubMode = "byok"
+        VStack(spacing: 0) {
+            // Sub-mode toggle: Free / BYOK
+            settingsSection(header: "模式") { // L10n: mode
+                VStack(spacing: 0) {
+                    subModeRow(
+                        title: "免费额度", // L10n: settings.builtinFree
+                        subtitle: "免费使用", // L10n: settings.builtinDesc
+                        selected: viewModel.builtinSubMode == "free",
+                        isLast: false
+                    ) {
+                        viewModel.builtinSubMode = "free"
+                    }
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    subModeRow(
+                        title: "自带 Key", // L10n: settings.builtinByok
+                        subtitle: "使用自己的 API Key，无限制", // L10n: settings.byokDesc
+                        selected: viewModel.builtinSubMode == "byok",
+                        isLast: true
+                    ) {
+                        viewModel.builtinSubMode = "byok"
+                    }
                 }
             }
 
             if viewModel.builtinSubMode == "free" {
-                // Model selection
-                sectionHeader("Model")
-                settingsPicker(options: models, selected: viewModel.selectedModel) { viewModel.selectedModel = $0 }
-
-                // Hosted mode
-                if authViewModel.isLoggedIn {
-                    hostedSection
+                // Model dropdown
+                settingsSection(header: "模型选择") { // L10n: settings.model
+                    dropdownRow(
+                        icon: "brain",
+                        label: "模型", // L10n: settings.model
+                        options: models,
+                        selected: viewModel.selectedModel
+                    ) {
+                        viewModel.selectedModel = $0
+                    }
                 }
             } else {
                 byokConfig
@@ -208,143 +283,284 @@ struct SettingsView: View {
         }
     }
 
-    private var byokConfig: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Provider")
-            settingsPicker(options: providers.map { (key: $0.key.rawValue, label: $0.label) }, selected: viewModel.provider.rawValue) {
-                viewModel.provider = LLMProvider(rawValue: $0) ?? .deepseek
-            }
+    // MARK: - BYOK Config
 
-            sectionHeader("API Key")
-            SecureField("Enter API Key", text: $viewModel.apiKey)
-                .textFieldStyle(SettingsTextFieldStyle())
+    private var byokConfig: some View {
+        settingsSection(header: "AI 服务商配置") { // L10n: settings.provider
+            VStack(spacing: 0) {
+                // Provider dropdown
+                dropdownRow(
+                    icon: "server.rack",
+                    label: "AI 服务商", // L10n: settings.provider
+                    options: providers.map { (key: $0.key.rawValue, label: $0.label) },
+                    selected: viewModel.provider.rawValue
+                ) {
+                    viewModel.provider = LLMProvider(rawValue: $0) ?? .deepseek
+                }
+
+                Divider().background(AppTheme.divider).padding(.leading, 52)
+
+                // API Key field
+                HStack(spacing: 12) {
+                    Image(systemName: "key.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .frame(width: 24)
+                    Text("API Key") // L10n: settings.apiKey
+                        .font(.system(size: 15))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer()
+                    SecureField("输入你的 API Key", text: $viewModel.apiKey) // L10n: settings.apiKeyPlaceholder
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 180)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
         }
     }
+
+    // MARK: - OpenClaw Config
 
     private var openclawConfig: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Sub mode
-            sectionHeader("Deploy Mode")
-            HStack(spacing: 8) {
-                subModeButton(title: "Hosted", selected: viewModel.openclawSubMode == "hosted") {
-                    viewModel.openclawSubMode = "hosted"
-                }
-                subModeButton(title: "Self-hosted", selected: viewModel.openclawSubMode == "selfhosted") {
-                    viewModel.openclawSubMode = "selfhosted"
+        VStack(spacing: 0) {
+            // Sub-mode: Hosted vs Self-hosted
+            settingsSection(header: "部署模式") { // L10n: deploy mode
+                VStack(spacing: 0) {
+                    subModeRow(
+                        title: "托管模式", // L10n: settings.openclawHosted
+                        subtitle: "平台提供，免费试用 50 条", // L10n: settings.openclawHostedDesc
+                        selected: viewModel.openclawSubMode == "hosted",
+                        isLast: false
+                    ) {
+                        viewModel.openclawSubMode = "hosted"
+                    }
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    subModeRow(
+                        title: "自建直连", // L10n: settings.openclawSelfhosted
+                        subtitle: "连接你自己的 Gateway", // L10n: settings.openclawSelfhostedDesc
+                        selected: viewModel.openclawSubMode == "selfhosted",
+                        isLast: true
+                    ) {
+                        viewModel.openclawSubMode = "selfhosted"
+                    }
                 }
             }
 
-            if viewModel.openclawSubMode == "selfhosted" {
-                sectionHeader("Gateway URL")
-                TextField("ws://your-server:port", text: $viewModel.openclawUrl)
-                    .textFieldStyle(SettingsTextFieldStyle())
-                    .keyboardType(.URL)
-                    .autocapitalization(.none)
-
-                sectionHeader("Token")
-                SecureField("Access token", text: $viewModel.openclawToken)
-                    .textFieldStyle(SettingsTextFieldStyle())
+            if viewModel.openclawSubMode == "hosted" {
+                // Hosted: Invitation code + Quota (THIS IS WHERE HOSTED GOES)
+                if authViewModel.isLoggedIn {
+                    hostedSection
+                } else {
+                    settingsSection(header: "托管服务") { // L10n: hosted service
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.badge.key")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.primary)
+                                .frame(width: 24)
+                            Text("请先登录以使用托管模式") // L10n: settings.hostedLoginRequired
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.primary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                }
+            } else {
+                // Self-hosted: Gateway URL + Token
+                settingsSection(header: "Gateway 配置") { // L10n: gateway config
+                    VStack(spacing: 0) {
+                        textFieldRow(
+                            icon: "link",
+                            label: "Gateway 地址", // L10n: settings.openclawUrl
+                            placeholder: "ws://你的公网IP:18789", // L10n: settings.openclawUrlPlaceholder
+                            text: $viewModel.openclawUrl,
+                            isSecure: false
+                        )
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+                        textFieldRow(
+                            icon: "lock.fill",
+                            label: "Token", // L10n: settings.openclawToken
+                            placeholder: "输入 Gateway 认证 Token", // L10n: settings.openclawTokenPlaceholder
+                            text: $viewModel.openclawToken,
+                            isSecure: true
+                        )
+                    }
+                }
             }
         }
     }
 
+    // MARK: - CoPaw Config
+
     private var copawConfig: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                subModeButton(title: "Hosted", selected: viewModel.copawSubMode == "hosted") {
-                    viewModel.copawSubMode = "hosted"
-                }
-                subModeButton(title: "Self-hosted", selected: viewModel.copawSubMode == "selfhosted") {
-                    viewModel.copawSubMode = "selfhosted"
+        VStack(spacing: 0) {
+            // Sub-mode
+            settingsSection(header: "部署模式") { // L10n: deploy mode
+                VStack(spacing: 0) {
+                    subModeRow(
+                        title: "托管模式", // L10n: settings.copawHosted
+                        subtitle: "使用平台提供的 CoPaw 服务，无需配置", // L10n: settings.copawHostedDesc
+                        selected: viewModel.copawSubMode == "hosted",
+                        isLast: false
+                    ) {
+                        viewModel.copawSubMode = "hosted"
+                    }
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    subModeRow(
+                        title: "自建直连", // L10n: settings.copawSelfhosted
+                        subtitle: "连接你自己的 CoPaw / AgentScope 实例", // L10n: settings.copawSelfhostedDesc
+                        selected: viewModel.copawSubMode == "selfhosted",
+                        isLast: true
+                    ) {
+                        viewModel.copawSubMode = "selfhosted"
+                    }
                 }
             }
 
             if viewModel.copawSubMode == "selfhosted" {
-                sectionHeader("CoPaw URL")
-                TextField("http://your-server:8088", text: $viewModel.copawUrl)
-                    .textFieldStyle(SettingsTextFieldStyle())
-                    .keyboardType(.URL)
-                    .autocapitalization(.none)
-
-                sectionHeader("Token")
-                SecureField("Access token", text: $viewModel.copawToken)
-                    .textFieldStyle(SettingsTextFieldStyle())
+                settingsSection(header: "CoPaw 配置") { // L10n: copaw config
+                    VStack(spacing: 0) {
+                        textFieldRow(
+                            icon: "link",
+                            label: "CoPaw 地址", // L10n: settings.copawUrl
+                            placeholder: "http://你的IP:8088", // L10n: settings.copawUrlPlaceholder
+                            text: $viewModel.copawUrl,
+                            isSecure: false
+                        )
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+                        textFieldRow(
+                            icon: "lock.fill",
+                            label: "Token", // L10n: settings.copawToken
+                            placeholder: "输入认证 Token（可选）", // L10n: settings.copawTokenPlaceholder
+                            text: $viewModel.copawToken,
+                            isSecure: true
+                        )
+                    }
+                }
             }
         }
     }
 
-    // MARK: - Hosted
+    // MARK: - Hosted Section (OpenClaw > Hosted)
 
     private var hostedSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Hosted OpenClaw")
-
+        settingsSection(header: "托管服务") { // L10n: hosted service
             if viewModel.hostedActivated {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
+                VStack(spacing: 8) {
+                    // Status row
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
                             .foregroundStyle(AppTheme.success)
-                        Text("Activated")
-                            .font(AppTheme.bodyFont)
-                            .foregroundStyle(AppTheme.success)
-                    }
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("已激活") // L10n: activated
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(AppTheme.success)
 
-                    if viewModel.hostedInstanceStatus == "provisioning" {
+                            if viewModel.hostedInstanceStatus == "provisioning" {
+                                HStack(spacing: 6) {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .tint(AppTheme.warning)
+                                    Text("实例启动中...") // L10n: settings.hostedProvisioning
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(AppTheme.warning)
+                                }
+                            } else if viewModel.hostedInstanceStatus == "error" {
+                                Text("实例启动失败，请联系管理员") // L10n: settings.hostedError
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(AppTheme.error)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    // Quota bar
+                    VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("Instance provisioning...")
-                                .font(AppTheme.captionFont)
-                                .foregroundStyle(AppTheme.warning)
+                            Text("试用额度") // L10n: quota
+                                .font(.system(size: 13))
+                                .foregroundStyle(AppTheme.textTertiary)
+                            Spacer()
+                            Text("\(viewModel.hostedQuotaUsed) / \(viewModel.hostedQuotaTotal)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AppTheme.textSecondary)
                         }
-                    }
 
-                    Text("Quota: \(viewModel.hostedQuotaUsed) / \(viewModel.hostedQuotaTotal)")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textSecondary)
-
-                    // Quota progress bar
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(AppTheme.surfaceLight)
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(quotaColor)
-                                .frame(width: geo.size.width * quotaProgress)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(AppTheme.surfaceLight)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(quotaColor)
+                                    .frame(width: max(0, geo.size.width * quotaProgress))
+                            }
                         }
+                        .frame(height: 4)
                     }
-                    .frame(height: 6)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
-                .padding(AppTheme.paddingStandard)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Enter invitation code to activate")
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    HStack {
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "ticket.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .frame(width: 24)
+                        Text("输入邀请码激活托管服务") // L10n: enter invitation code
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    HStack(spacing: 10) {
                         TextField("AOS-XXXXX", text: $viewModel.invitationCode)
-                            .textFieldStyle(SettingsTextFieldStyle())
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .background(AppTheme.surfaceLight)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                             .autocapitalization(.allCharacters)
+                            .autocorrectionDisabled()
+
                         Button {
                             Task { await viewModel.activateInvitationCode() }
                         } label: {
-                            if viewModel.isActivating {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Activate")
+                            Group {
+                                if viewModel.isActivating {
+                                    ProgressView()
+                                        .tint(.white)
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Text("激活") // L10n: settings.hostedActivate
+                                        .font(.system(size: 14, weight: .medium))
+                                }
                             }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(
+                                viewModel.invitationCode.trimmed.isEmpty || viewModel.isActivating
+                                    ? AppTheme.primary.opacity(0.4)
+                                    : AppTheme.primary
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(AppTheme.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                         .disabled(viewModel.invitationCode.trimmed.isEmpty || viewModel.isActivating)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
             }
         }
@@ -359,35 +575,44 @@ struct SettingsView: View {
         quotaProgress > 0.9 ? AppTheme.error : quotaProgress > 0.7 ? AppTheme.warning : AppTheme.success
     }
 
-    // MARK: - Language
+    // MARK: - Language Row (Dropdown)
 
-    private var languageSection: some View {
-        settingsPicker(options: languages, selected: viewModel.locale) { viewModel.locale = $0 }
+    private var languageRow: some View {
+        dropdownRow(
+            icon: "globe",
+            label: "语言", // L10n: settings.language
+            options: languages,
+            selected: viewModel.locale
+        ) {
+            viewModel.locale = $0
+        }
     }
 
-    // MARK: - Save
+    // MARK: - Save Button
 
     private var saveButton: some View {
         Button {
             Task { await viewModel.saveSettings() }
         } label: {
-            HStack {
+            HStack(spacing: 8) {
                 if viewModel.isSaving {
                     ProgressView()
                         .tint(.white)
+                        .scaleEffect(0.85)
                 } else if viewModel.showSaved {
                     Image(systemName: "checkmark")
-                    Text("Saved!")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("已保存") // L10n: settings.saved
                 } else {
-                    Text("Save Settings")
+                    Text("保存") // L10n: settings.save
                 }
             }
-            .font(AppTheme.headlineFont)
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, AppTheme.paddingStandard)
+            .padding(.vertical, 14)
             .background(viewModel.showSaved ? AppTheme.success : AppTheme.primary)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .disabled(viewModel.isSaving)
     }
@@ -395,13 +620,10 @@ struct SettingsView: View {
     // MARK: - Version
 
     private var versionInfo: some View {
-        HStack {
-            Spacer()
-            Text("AgentOS iOS v1.0.0")
-                .font(AppTheme.smallFont)
-                .foregroundStyle(AppTheme.textTertiary)
-            Spacer()
-        }
+        Text("AgentOS iOS v1.0.0") // L10n: settings.version
+            .font(.system(size: 12))
+            .foregroundStyle(AppTheme.textTertiary)
+            .frame(maxWidth: .infinity)
     }
 
     // MARK: - Logout
@@ -410,70 +632,162 @@ struct SettingsView: View {
         Button {
             Task { await authViewModel.logout() }
         } label: {
-            Text("Logout")
-                .font(AppTheme.headlineFont)
-                .foregroundStyle(.white)
+            Text("退出登录") // L10n: settings.logout
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(AppTheme.error)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.paddingStandard)
-                .background(AppTheme.error)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                .padding(.vertical, 14)
+                .background(AppTheme.error.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(AppTheme.error.opacity(0.3), lineWidth: 0.5)
+                )
         }
-        .padding(.bottom, AppTheme.paddingXLarge)
     }
 
-    // MARK: - Helpers
+    // MARK: - Reusable Components
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(AppTheme.captionFont)
-            .foregroundStyle(AppTheme.textSecondary)
-            .textCase(.uppercase)
-            .padding(.top, 4)
-    }
-
-    private func subModeButton(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(AppTheme.captionFont)
-                .foregroundStyle(selected ? .white : AppTheme.textSecondary)
+    /// Section container with optional header — Telegram-style grouped card
+    private func settingsSection<Content: View>(header: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(header)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(AppTheme.textTertiary)
+                .textCase(.uppercase)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(selected ? AppTheme.primary : AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+
+            content()
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
         }
+        .padding(.top, 16)
     }
 
-    private func settingsPicker(options: [(key: String, label: String)], selected: String, onChange: @escaping (String) -> Void) -> some View {
-        VStack(spacing: 4) {
+    /// Sub-mode radio row (hosted/selfhosted, free/byok)
+    private func subModeRow(title: String, subtitle: String, selected: Bool, isLast: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                action()
+            }
+        }) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(selected ? AppTheme.primary : AppTheme.textTertiary.opacity(0.5), lineWidth: 1.5)
+                        .frame(width: 18, height: 18)
+                    if selected {
+                        Circle()
+                            .fill(AppTheme.primary)
+                            .frame(width: 9, height: 9)
+                    }
+                }
+                .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(selected ? AppTheme.primary.opacity(0.05) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Dropdown row using Menu — native iOS popover
+    private func dropdownRow(icon: String, label: String, options: [(key: String, label: String)], selected: String, onChange: @escaping (String) -> Void) -> some View {
+        let selectedLabel = options.first(where: { $0.key == selected })?.label ?? selected
+
+        return Menu {
             ForEach(options, id: \.key) { opt in
                 Button {
                     onChange(opt.key)
                 } label: {
                     HStack {
                         Text(opt.label)
-                            .font(AppTheme.bodyFont)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Spacer()
-                        if selected == opt.key {
+                        if opt.key == selected {
                             Image(systemName: "checkmark")
-                                .foregroundStyle(AppTheme.primary)
                         }
                     }
-                    .padding(AppTheme.paddingStandard)
-                    .background(selected == opt.key ? AppTheme.primary.opacity(0.1) : AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                 }
             }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppTheme.textTertiary)
+                    .frame(width: 24)
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Text(selectedLabel)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppTheme.primary)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Text field row for URL/Token inputs
+    private func textFieldRow(icon: String, label: String, placeholder: String, text: Binding<String>, isSecure: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppTheme.textTertiary)
+                    .frame(width: 24)
+                Text(label)
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: text)
+                } else {
+                    TextField(placeholder, text: text)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                }
+            }
+            .font(.system(size: 14))
+            .foregroundStyle(AppTheme.textPrimary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(AppTheme.surfaceLight)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
     }
 }
 
-// MARK: - TextField Style
+// MARK: - TextField Style (kept for backward compat)
 
 struct SettingsTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
-            .font(AppTheme.bodyFont)
+            .font(.system(size: 14))
             .foregroundStyle(AppTheme.textPrimary)
             .padding(AppTheme.paddingStandard)
             .background(AppTheme.surface)
