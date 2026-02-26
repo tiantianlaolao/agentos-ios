@@ -28,10 +28,11 @@ struct ContentView: View {
 struct MainTabView: View {
     @Bindable var authViewModel: AuthViewModel
     @State private var selectedTab = 0
+    @State private var chatViewModel = ChatViewModel()
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ChatView()
+            ChatView(viewModel: chatViewModel)
                 .tabItem {
                     Label(String(localized: "Chat"), systemImage: "bubble.left")
                 }
