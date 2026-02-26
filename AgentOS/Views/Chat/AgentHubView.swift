@@ -20,14 +20,14 @@ private let agentCards: [AgentCard] = [
         id: .openclaw,
         nameKey: "chat.tabOpenclaw",
         descKey: "chat.tabOpenclawDesc",
-        icon: "hand.raised",
+        icon: "bolt.fill",
         color: AppTheme.warning
     ),
     AgentCard(
         id: .copaw,
         nameKey: "chat.tabCopaw",
         descKey: "chat.tabCopawDesc",
-        icon: "pawprint",
+        icon: "pawprint.fill",
         color: AppTheme.primary
     ),
 ]
@@ -39,66 +39,60 @@ struct AgentHubView: View {
     let onManageSkills: () -> Void
 
     var body: some View {
-        ZStack {
-            AppTheme.background.ignoresSafeArea()
+        VStack(spacing: 0) {
+            // Title area
+            VStack(spacing: 6) {
+                Text(L10n.tr("chat.hubTitle"))
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
 
-            VStack(spacing: 0) {
-                Spacer()
-                    .frame(height: 40)
+                Text(L10n.tr("chat.hubSubtitle"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(.top, 16)
+            .padding(.bottom, 20)
 
-                // Title
-                VStack(spacing: 8) {
-                    Text(L10n.tr("chat.hubTitle"))
-                        .font(.system(size: 26, weight: .bold))
-                        .foregroundStyle(AppTheme.textPrimary)
-
-                    Text(L10n.tr("chat.hubSubtitle"))
-                        .font(AppTheme.captionFont)
-                        .foregroundStyle(AppTheme.textTertiary)
-                }
-                .padding(.bottom, 32)
-
-                // Agent cards
-                VStack(spacing: 12) {
-                    ForEach(agentCards) { card in
-                        AgentHubCardView(
-                            card: card,
-                            isSelected: card.id == currentMode,
-                            isConnected: card.id == currentMode && isConnected,
-                            onTap: { onSelect(card.id) }
-                        )
-                    }
-                }
-                .padding(.horizontal, 20)
-
-                Spacer()
-
-                // Manage Skills button
-                Button(action: onManageSkills) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "puzzlepiece.extension")
-                            .font(.system(size: 15))
-                        Text(L10n.tr("chat.manageSkills"))
-                            .font(.system(size: 15, weight: .medium))
-                    }
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-                            .stroke(AppTheme.border, lineWidth: 1)
+            // Agent cards
+            VStack(spacing: 10) {
+                ForEach(agentCards) { card in
+                    AgentHubCardView(
+                        card: card,
+                        isSelected: card.id == currentMode,
+                        isConnected: card.id == currentMode && isConnected,
+                        onTap: { onSelect(card.id) }
                     )
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
             }
+            .padding(.horizontal, 16)
+
+            Spacer()
+
+            // Manage Skills button
+            Button(action: onManageSkills) {
+                HStack(spacing: 8) {
+                    Image(systemName: "puzzlepiece.extension")
+                        .font(.system(size: 14))
+                    Text(L10n.tr("chat.manageSkills"))
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .foregroundStyle(AppTheme.textSecondary)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppTheme.border, lineWidth: 0.5)
+                )
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
     }
 }
 
-// MARK: - Full-width Agent Card
+// MARK: - Agent Card Row
 
 private struct AgentHubCardView: View {
     let card: AgentCard
@@ -108,62 +102,59 @@ private struct AgentHubCardView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 14) {
-                // Icon circle
+            HStack(spacing: 12) {
+                // Icon
                 ZStack {
                     Circle()
                         .fill(card.color.opacity(0.15))
-                        .frame(width: 46, height: 46)
-
+                        .frame(width: 42, height: 42)
                     Image(systemName: card.icon)
-                        .font(.system(size: 22))
+                        .font(.system(size: 18))
                         .foregroundStyle(card.color)
                 }
 
                 // Text
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
                         Text(L10n.tr(card.nameKey))
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(AppTheme.textPrimary)
-
                         if isSelected {
                             Text(L10n.tr("chat.current"))
                                 .font(.system(size: 10, weight: .bold))
                                 .foregroundStyle(card.color)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
                                 .background(card.color.opacity(0.15))
                                 .clipShape(Capsule())
                         }
                     }
-
                     Text(L10n.tr(card.descKey))
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundStyle(AppTheme.textTertiary)
                         .lineLimit(1)
                 }
 
                 Spacer()
 
-                // Connection indicator
+                // Connection dot
                 if isSelected {
                     Circle()
                         .fill(isConnected ? AppTheme.success : AppTheme.warning)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(AppTheme.textTertiary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(isSelected ? card.color.opacity(0.08) : AppTheme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(isSelected ? card.color.opacity(0.06) : AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-                    .stroke(isSelected ? card.color.opacity(0.4) : AppTheme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? card.color.opacity(0.3) : AppTheme.border.opacity(0.5), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)

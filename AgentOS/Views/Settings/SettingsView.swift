@@ -33,59 +33,57 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Current mode indicator bar
-                    currentModeBar
+        ScrollView {
+            VStack(spacing: 0) {
+                // Current mode indicator bar
+                currentModeBar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
+
+                // Account section
+                accountSection
+                    .padding(.bottom, 16)
+
+                // Connection Mode
+                settingsSection(header: L10n.tr("settings.connectionMode")) {
+                    connectionModeCards
+                }
+
+                // Mode-specific configuration
+                modeConfigSection
+
+                // Language
+                settingsSection(header: L10n.tr("settings.language")) {
+                    languageRow
+                }
+
+                // Save button
+                saveButton
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+
+                // Version
+                versionInfo
+                    .padding(.top, 16)
+
+                // Logout
+                if authViewModel.isLoggedIn {
+                    logoutButton
                         .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-
-                    // Account section
-                    accountSection
-                        .padding(.bottom, 16)
-
-                    // Connection Mode
-                    settingsSection(header: L10n.tr("settings.connectionMode")) {
-                        connectionModeCards
-                    }
-
-                    // Mode-specific configuration
-                    modeConfigSection
-
-                    // Language
-                    settingsSection(header: L10n.tr("settings.language")) {
-                        languageRow
-                    }
-
-                    // Save button
-                    saveButton
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-
-                    // Version
-                    versionInfo
                         .padding(.top, 16)
-
-                    // Logout
-                    if authViewModel.isLoggedIn {
-                        logoutButton
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 32)
-                    } else {
-                        Spacer()
-                            .frame(height: 32)
-                    }
+                        .padding(.bottom, 32)
+                } else {
+                    Spacer()
+                        .frame(height: 32)
                 }
             }
-            .background(AppTheme.background)
-            .navigationTitle(L10n.tr("settings.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .task {
-                await viewModel.loadSettings()
-            }
+        }
+        .background(AppTheme.background)
+        .navigationTitle(L10n.tr("settings.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await viewModel.loadSettings()
         }
     }
 
@@ -125,6 +123,8 @@ struct SettingsView: View {
 
     // MARK: - Account Section
 
+    @State private var showLoginSheet = false
+
     private var accountSection: some View {
         Group {
             if authViewModel.isLoggedIn {
@@ -145,23 +145,40 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(AppTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
                 .padding(.horizontal, 16)
             } else {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.circle")
-                        .font(.system(size: 36))
-                        .foregroundStyle(AppTheme.textTertiary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.tr("settings.notLoggedIn"))
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(AppTheme.textPrimary)
+                // Anonymous mode - show login button
+                Button {
+                    showLoginSheet = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.circle")
+                            .font(.system(size: 36))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.tr("settings.notLoggedIn"))
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text(L10n.tr("settings.loginOrRegister"))
+                                .font(.system(size: 13))
+                                .foregroundStyle(AppTheme.primary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppTheme.textTertiary)
                     }
-                    Spacer()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(AppTheme.surface)
-                .padding(.horizontal, 16)
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showLoginSheet) {
+                    LoginView(authViewModel: authViewModel)
+                }
             }
         }
     }

@@ -39,17 +39,21 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
-            MemoryView()
-                .tabItem {
-                    Label(L10n.tr("tabs.memory"), systemImage: "lightbulb")
-                }
-                .tag(1)
+            NavigationStack {
+                MemoryView()
+            }
+            .tabItem {
+                Label(L10n.tr("tabs.memory"), systemImage: "lightbulb")
+            }
+            .tag(1)
 
-            SettingsView(authViewModel: authViewModel)
-                .tabItem {
-                    Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
-                }
-                .tag(2)
+            NavigationStack {
+                SettingsView(authViewModel: authViewModel)
+            }
+            .tabItem {
+                Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
+            }
+            .tag(2)
         }
         .tint(AppTheme.primary)
     }

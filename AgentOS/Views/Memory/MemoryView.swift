@@ -6,41 +6,39 @@ struct MemoryView: View {
     @State private var isBuiltinMode = true
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.background.ignoresSafeArea()
+        ZStack {
+            AppTheme.background.ignoresSafeArea()
 
-                if !isLoggedIn {
-                    notLoggedInView
-                } else if !isBuiltinMode {
-                    externalModeView
-                } else if viewModel.isLoading {
-                    ProgressView()
-                        .tint(AppTheme.primary)
-                } else if viewModel.isEditing {
-                    editingView
-                } else {
-                    readView
-                }
+            if !isLoggedIn {
+                notLoggedInView
+            } else if !isBuiltinMode {
+                externalModeView
+            } else if viewModel.isLoading {
+                ProgressView()
+                    .tint(AppTheme.primary)
+            } else if viewModel.isEditing {
+                editingView
+            } else {
+                readView
             }
-            .navigationTitle(L10n.tr("memory.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if isLoggedIn && isBuiltinMode && !viewModel.isLoading {
-                    if viewModel.isEditing {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button(L10n.tr("memory.cancel")) {
-                                viewModel.cancelEditing()
-                            }
-                            .foregroundStyle(AppTheme.textSecondary)
+        }
+        .navigationTitle(L10n.tr("memory.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isLoggedIn && isBuiltinMode && !viewModel.isLoading {
+                if viewModel.isEditing {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(L10n.tr("memory.cancel")) {
+                            viewModel.cancelEditing()
                         }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button(viewModel.isSaving ? L10n.tr("memory.saving") : L10n.tr("memory.save")) {
-                                Task { await viewModel.saveMemory() }
-                            }
-                            .foregroundStyle(AppTheme.primary)
-                            .disabled(!viewModel.hasChanges || viewModel.isSaving)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(viewModel.isSaving ? L10n.tr("memory.saving") : L10n.tr("memory.save")) {
+                            Task { await viewModel.saveMemory() }
                         }
+                        .foregroundStyle(AppTheme.primary)
+                        .disabled(!viewModel.hasChanges || viewModel.isSaving)
                     }
                 }
             }
