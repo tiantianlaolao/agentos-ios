@@ -54,8 +54,9 @@ struct RedeemCodeRequest: Codable, Sendable {
 }
 
 struct RedeemCodeResponse: Codable, Sendable {
-    let success: Bool
-    let message: String
+    let success: Bool?
+    let account: HostedAccount?
+    let error: String?
 }
 
 // MARK: - Memory

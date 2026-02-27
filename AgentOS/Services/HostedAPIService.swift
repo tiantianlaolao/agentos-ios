@@ -25,9 +25,9 @@ final class HostedAPIService: Sendable {
         return try JSONDecoder().decode(HostedStatusResponse.self, from: data)
     }
 
-    /// POST /hosted/redeem — redeem an invitation code.
+    /// POST /hosted/activate — redeem an invitation code.
     func redeemCode(_ code: String, authToken: String) async throws -> RedeemCodeResponse {
-        guard let url = URL(string: "\(baseURL)/hosted/redeem") else {
+        guard let url = URL(string: "\(baseURL)/hosted/activate") else {
             throw HostedAPIError.invalidURL
         }
         var request = URLRequest(url: url)
@@ -39,7 +39,13 @@ final class HostedAPIService: Sendable {
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse else {
+            throw HostedAPIError.requestFailed
+        }
+        if http.statusCode != 200 {
+            if let errResp = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw HostedAPIError.serverError(errResp.error)
+            }
             throw HostedAPIError.requestFailed
         }
         return try JSONDecoder().decode(RedeemCodeResponse.self, from: data)
@@ -48,11 +54,13 @@ final class HostedAPIService: Sendable {
     enum HostedAPIError: Error, LocalizedError {
         case invalidURL
         case requestFailed
+        case serverError(String)
 
         var errorDescription: String? {
             switch self {
             case .invalidURL: return "Invalid hosted API URL"
             case .requestFailed: return "Hosted API request failed"
+            case .serverError(let msg): return msg
             }
         }
     }

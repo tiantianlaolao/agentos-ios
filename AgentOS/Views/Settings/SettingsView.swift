@@ -575,8 +575,15 @@ struct SettingsView: View {
                         .disabled(viewModel.invitationCode.trimmed.isEmpty || viewModel.isActivating)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
+
+                    if !viewModel.activationError.isEmpty {
+                        Text(viewModel.activationError)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 16)
+                    }
                 }
+                .padding(.bottom, 12)
             }
         }
     }

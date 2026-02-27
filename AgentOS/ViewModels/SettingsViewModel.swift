@@ -27,6 +27,7 @@ final class SettingsViewModel {
     var hostedInstanceStatus: String = "pending"
     var invitationCode: String = ""
     var isActivating: Bool = false
+    var activationError: String = ""
 
     // App
     var locale: String = "zh"
@@ -140,19 +141,26 @@ final class SettingsViewModel {
     func activateInvitationCode() async {
         guard !invitationCode.trimmed.isEmpty else { return }
         isActivating = true
+        activationError = ""
         do {
             let token = try await db.getSetting(key: "auth_token")
             guard let token, token != "skip" else {
+                activationError = "请先登录"
                 isActivating = false
                 return
             }
             let service = HostedAPIService(baseURL: serverUrl)
-            _ = try await service.redeemCode(invitationCode.trimmed, authToken: token)
-            hostedActivated = true
-            try await db.setSetting(key: ukey("hostedActivated"), value: "true")
-            invitationCode = ""
-            await fetchHostedStatus()
+            let result = try await service.redeemCode(invitationCode.trimmed, authToken: token)
+            if result.success == true {
+                hostedActivated = true
+                try await db.setSetting(key: ukey("hostedActivated"), value: "true")
+                invitationCode = ""
+                await fetchHostedStatus()
+            } else {
+                activationError = result.error ?? "激活失败"
+            }
         } catch {
+            activationError = error.localizedDescription
             print("[Settings] Activation error: \(error)")
         }
         isActivating = false
