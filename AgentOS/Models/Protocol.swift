@@ -49,7 +49,11 @@ enum LLMProvider: String, Codable, Sendable, CaseIterable {
     case deepseek
     case openai
     case anthropic
+    case gemini
     case moonshot
+    case qwen
+    case zhipu
+    case openrouter
 }
 
 // MARK: - ErrorCode

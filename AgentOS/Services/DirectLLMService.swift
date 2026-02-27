@@ -17,8 +17,12 @@ final class DirectLLMService: Sendable {
     static let providerConfigs: [LLMProvider: ProviderConfig] = [
         .deepseek: ProviderConfig(baseUrl: "https://api.deepseek.com", defaultModel: "deepseek-chat"),
         .openai: ProviderConfig(baseUrl: "https://api.openai.com", defaultModel: "gpt-4o"),
+        .anthropic: ProviderConfig(baseUrl: "https://api.anthropic.com", defaultModel: "claude-sonnet-4-20250514"),
+        .gemini: ProviderConfig(baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", defaultModel: "gemini-2.5-flash"),
         .moonshot: ProviderConfig(baseUrl: "https://api.moonshot.cn/v1", defaultModel: "moonshot-v1-auto"),
-        .anthropic: ProviderConfig(baseUrl: "https://api.anthropic.com", defaultModel: "claude-sonnet-4-5-20250929"),
+        .qwen: ProviderConfig(baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel: "qwen-max"),
+        .zhipu: ProviderConfig(baseUrl: "https://open.bigmodel.cn/api/paas/v4", defaultModel: "glm-4"),
+        .openrouter: ProviderConfig(baseUrl: "https://openrouter.ai/api/v1", defaultModel: "auto"),
     ]
 
     private static let systemPrompt =

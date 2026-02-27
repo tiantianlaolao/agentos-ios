@@ -24,7 +24,11 @@ struct SettingsView: View {
         (.deepseek, "DeepSeek"),
         (.openai, "OpenAI"),
         (.anthropic, "Anthropic"),
-        (.moonshot, "Kimi"),
+        (.gemini, "Google Gemini"),
+        (.moonshot, "Moonshot (Kimi)"),
+        (.qwen, "Qwen (通义千问)"),
+        (.zhipu, "Z.AI (智谱 GLM)"),
+        (.openrouter, "OpenRouter"),
     ]
 
     private let languages: [(key: String, label: String)] = [
