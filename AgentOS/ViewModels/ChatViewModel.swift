@@ -242,7 +242,7 @@ final class ChatViewModel {
                 let copawSubMode = try? await DatabaseService.shared.getSetting(key: ukey("copawSubMode"))
                 options.copawUrl = copawUrl
                 options.copawToken = copawToken
-                options.copawHosted = copawSubMode == "hosted"
+                options.copawHosted = copawSubMode == "hosted" || copawSubMode == "deploy"
             }
 
             if connectionMode == .builtin {
