@@ -297,7 +297,6 @@ final class ChatViewModel {
         do {
             let openclawUrl = try await DatabaseService.shared.getSetting(key: ukey("openclawUrl")) ?? ""
             let openclawToken = try await DatabaseService.shared.getSetting(key: ukey("openclawToken")) ?? ""
-            let openclawSubMode = try await DatabaseService.shared.getSetting(key: ukey("openclawSubMode")) ?? "hosted"
 
             if openclawUrl.isEmpty {
                 // Empty URL: use WebSocket to server (server proxy mode for admin users)
