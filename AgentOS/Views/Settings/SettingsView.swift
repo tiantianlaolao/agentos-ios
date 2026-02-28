@@ -434,46 +434,12 @@ struct SettingsView: View {
             }
 
             if viewModel.copawSubMode == "deploy" {
-                // Level 2 under Deploy: Cloud (greyed out) / Local
-                settingsSection(header: L10n.tr("settings.copawDeploy")) {
-                    VStack(spacing: 0) {
-                        // Cloud - greyed out
-                        VStack(spacing: 0) {
-                            subModeRow(
-                                title: L10n.tr("settings.copawDeployCloud"),
-                                subtitle: "",
-                                selected: false,
-                                isLast: false
-                            ) {
-                                // no-op: disabled
-                            }
-                            .opacity(0.4)
-                            .disabled(true)
-
-                            Text(L10n.tr("settings.copawCloudNotAvailable"))
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.leading, 52)
-                                .padding(.bottom, 8)
-                        }
-
-                        Divider().background(AppTheme.divider).padding(.leading, 52)
-
-                        // Local - active
-                        subModeRow(
-                            title: L10n.tr("settings.copawDeployLocal"),
-                            subtitle: "",
-                            selected: viewModel.copawDeployType == "local",
-                            isLast: true
-                        ) {
-                            viewModel.copawDeployType = "local"
-                        }
-                    }
-                }
-
-                // Model selection: Default / Custom
-                copawModelSection
+                // Deploy hint: deploy on desktop first
+                Text(L10n.tr("settings.copawDeployDesktopHint"))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
             } else {
                 // Level 2 under Self-hosted: Remote / Local
                 settingsSection(header: L10n.tr("settings.copawSelfhosted")) {

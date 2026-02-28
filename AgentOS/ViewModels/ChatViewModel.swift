@@ -237,12 +237,15 @@ final class ChatViewModel {
             options.deviceId = deviceId
 
             if connectionMode == .copaw {
-                let copawUrl = try? await DatabaseService.shared.getSetting(key: ukey("copawUrl"))
-                let copawToken = try? await DatabaseService.shared.getSetting(key: ukey("copawToken"))
                 let copawSubMode = try? await DatabaseService.shared.getSetting(key: ukey("copawSubMode"))
-                options.copawUrl = copawUrl
-                options.copawToken = copawToken
-                options.copawHosted = copawSubMode == "hosted" || copawSubMode == "deploy"
+                let isCopawDeploy = copawSubMode == "deploy"
+                // Deploy mode: no URL needed, server routes via bridge
+                if !isCopawDeploy {
+                    let copawUrl = try? await DatabaseService.shared.getSetting(key: ukey("copawUrl"))
+                    let copawToken = try? await DatabaseService.shared.getSetting(key: ukey("copawToken"))
+                    options.copawUrl = copawUrl
+                    options.copawToken = copawToken
+                }
             }
 
             if connectionMode == .builtin {

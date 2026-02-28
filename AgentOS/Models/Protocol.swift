@@ -103,7 +103,6 @@ struct ConnectPayload: Codable, Sendable {
     var openclawHosted: Bool?
     var copawUrl: String?
     var copawToken: String?
-    var copawHosted: Bool?
     var deviceId: String?
     var authToken: String?
     var model: String?
