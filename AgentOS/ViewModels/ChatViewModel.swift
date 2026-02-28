@@ -125,12 +125,14 @@ final class ChatViewModel {
 
     // MARK: - Conversation Management
 
-    /// Get effective conversation mode: builtin & byok share "builtin", others are separate
+    /// Get effective conversation mode: builtin & byok share "builtin", others are separate.
+    /// Note: Known agents (openclaw/copaw) will have connectionMode set to .openclaw/.copaw
+    /// by connectAgent(), so .agent here is only reached by truly custom agents.
     private func conversationMode(_ mode: ConnectionMode) -> ConnectionMode {
         switch mode {
         case .openclaw: return .openclaw
         case .copaw: return .copaw
-        case .agent: return .agent
+        case .agent: return .agent  // custom agents only
         case .builtin, .byok: return .builtin
         }
     }
@@ -193,17 +195,33 @@ final class ChatViewModel {
         await loadSettings()
         await loadOrCreateConversation()
 
-        // Decide connection strategy based on mode
+        // Check if this mode came from agent settings (agentId matches)
+        let agentId = try? await DatabaseService.shared.getSetting(key: ukey("agentId"))
+        let isAgentOrigin: Bool
         switch connectionMode {
-        case .openclaw:
-            await connectOpenClaw()
-        case .agent:
+        case .openclaw: isAgentOrigin = (agentId == "openclaw")
+        case .copaw: isAgentOrigin = (agentId == "copaw")
+        case .agent: isAgentOrigin = true
+        default: isAgentOrigin = false
+        }
+
+        // Decide connection strategy based on mode
+        if isAgentOrigin {
+            // Route through connectAgent() which uses agentUrl/agentToken/agentSubMode
             await connectAgent()
-        case .builtin, .copaw:
-            connectWebSocket()
-        case .byok:
-            // BYOK doesn't need a persistent connection — calls API directly
-            isConnected = true
+        } else {
+            switch connectionMode {
+            case .openclaw:
+                await connectOpenClaw()
+            case .builtin, .copaw:
+                connectWebSocket()
+            case .byok:
+                // BYOK doesn't need a persistent connection — calls API directly
+                isConnected = true
+            case .agent:
+                // Fallback (should not reach here since isAgentOrigin handles it)
+                await connectAgent()
+            }
         }
     }
 
@@ -217,13 +235,24 @@ final class ChatViewModel {
     }
 
     func switchMode(_ mode: ConnectionMode) async {
-        guard mode != connectionMode else { return }
+        // Resolve .agent to the real runtime mode based on agentId
+        var resolvedMode = mode
+        if mode == .agent {
+            let agentId = try? await DatabaseService.shared.getSetting(key: ukey("agentId"))
+            switch agentId {
+            case "openclaw": resolvedMode = .openclaw
+            case "copaw": resolvedMode = .copaw
+            default: resolvedMode = .agent  // truly custom agents
+            }
+        }
+
+        guard resolvedMode != connectionMode else { return }
         disconnect()
         resetStreamingState()
-        connectionMode = mode
+        connectionMode = resolvedMode
         Task {
             let key = currentUserId != "anonymous" ? "\(currentUserId):mode" : "mode"
-            try? await DatabaseService.shared.setSetting(key: key, value: mode.rawValue)
+            try? await DatabaseService.shared.setSetting(key: key, value: resolvedMode.rawValue)
         }
         await connect()
     }
@@ -309,12 +338,27 @@ final class ChatViewModel {
     }
 
     /// Connect in unified agent mode
+    /// Uses the real runtime mode (.openclaw / .copaw) based on agentId,
+    /// so conversations and skills routing stay correctly isolated.
     private func connectAgent() async {
         do {
             let agentId = try await DatabaseService.shared.getSetting(key: ukey("agentId")) ?? "openclaw"
             let agentSubMode = try await DatabaseService.shared.getSetting(key: ukey("agentSubMode")) ?? "direct"
             let agentUrl = try await DatabaseService.shared.getSetting(key: ukey("agentUrl")) ?? ""
             let agentToken = try await DatabaseService.shared.getSetting(key: ukey("agentToken")) ?? ""
+
+            // Resolve runtime mode from agentId (known agents get their real mode)
+            let runtimeMode: ConnectionMode
+            switch agentId {
+            case "openclaw": runtimeMode = .openclaw
+            case "copaw": runtimeMode = .copaw
+            default: runtimeMode = .agent // truly custom agents
+            }
+
+            // Update connectionMode so conversation isolation and skills routing work correctly
+            if connectionMode != runtimeMode {
+                connectionMode = runtimeMode
+            }
 
             // Direct + OpenClaw with URL: use OpenClawDirectService
             if agentSubMode == "direct" && agentId == "openclaw" && !agentUrl.isEmpty {
@@ -345,7 +389,7 @@ final class ChatViewModel {
             options.agentToken = agentToken.isEmpty ? nil : agentToken
             options.agentProtocol = agentProtocol
 
-            wsService.connect(mode: .agent, options: options)
+            wsService.connect(mode: runtimeMode, options: options)
         } catch {
             isConnected = false
             errorMessage = error.localizedDescription

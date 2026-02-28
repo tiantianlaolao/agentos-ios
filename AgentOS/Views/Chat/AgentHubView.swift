@@ -31,6 +31,15 @@ struct AgentHubView: View {
     let onSelect: (ConnectionMode) -> Void
     let onManageSkills: () -> Void
 
+    /// Map runtime modes to display card groups.
+    /// openclaw/copaw/agent all map to the .agent card visually.
+    private func displayGroup(for mode: ConnectionMode) -> ConnectionMode {
+        switch mode {
+        case .openclaw, .copaw, .agent: return .agent
+        default: return mode
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Title area
@@ -51,8 +60,8 @@ struct AgentHubView: View {
                 ForEach(agentCards) { card in
                     AgentHubCardView(
                         card: card,
-                        isSelected: card.id == currentMode,
-                        isConnected: card.id == currentMode && isConnected,
+                        isSelected: card.id == displayGroup(for: currentMode),
+                        isConnected: card.id == displayGroup(for: currentMode) && isConnected,
                         onTap: { onSelect(card.id) }
                     )
                 }

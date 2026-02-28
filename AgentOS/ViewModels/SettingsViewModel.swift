@@ -99,16 +99,35 @@ final class SettingsViewModel {
             print("[Settings] Load error: \(error)")
         }
 
+        // Map persisted runtime mode back to .agent for UI display
+        // when the mode matches the agentId (came from agent settings tab)
+        if (mode == .openclaw && agentId == "openclaw") ||
+           (mode == .copaw && agentId == "copaw") {
+            mode = .agent
+        }
+
         // Fetch hosted status
         await fetchHostedStatus()
     }
 
     // MARK: - Save
 
+    /// Resolve .agent to the real runtime mode based on agentId.
+    /// Known agents (openclaw/copaw) use their native mode for conversation isolation and skills routing.
+    var resolvedMode: ConnectionMode {
+        guard mode == .agent else { return mode }
+        switch agentId {
+        case "openclaw": return .openclaw
+        case "copaw": return .copaw
+        default: return .agent  // truly custom agents
+        }
+    }
+
     func saveSettings() async {
         isSaving = true
         do {
-            try await db.setSetting(key: ukey("mode"), value: mode.rawValue)
+            // Save the resolved mode (not .agent for known agents)
+            try await db.setSetting(key: ukey("mode"), value: resolvedMode.rawValue)
             try await db.setSetting(key: ukey("builtinSubMode"), value: builtinSubMode)
             try await db.setSetting(key: ukey("provider"), value: provider.rawValue)
             try await db.setSetting(key: ukey("apiKey"), value: apiKey)
