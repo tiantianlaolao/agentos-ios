@@ -19,8 +19,15 @@ final class HostedAPIService: Sendable {
         request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw HostedAPIError.requestFailed
+        guard let http = response as? HTTPURLResponse else {
+            throw HostedAPIError.serverError("No HTTP response")
+        }
+        if http.statusCode != 200 {
+            if let errResp = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw HostedAPIError.serverError(errResp.error)
+            }
+            let body = String(data: data, encoding: .utf8) ?? "(empty)"
+            throw HostedAPIError.serverError("HTTP \(http.statusCode): \(body.prefix(200))")
         }
         return try JSONDecoder().decode(HostedStatusResponse.self, from: data)
     }
@@ -40,13 +47,14 @@ final class HostedAPIService: Sendable {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw HostedAPIError.requestFailed
+            throw HostedAPIError.serverError("No HTTP response")
         }
         if http.statusCode != 200 {
             if let errResp = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
                 throw HostedAPIError.serverError(errResp.error)
             }
-            throw HostedAPIError.requestFailed
+            let body = String(data: data, encoding: .utf8) ?? "(empty)"
+            throw HostedAPIError.serverError("HTTP \(http.statusCode): \(body.prefix(200))")
         }
         return try JSONDecoder().decode(RedeemCodeResponse.self, from: data)
     }

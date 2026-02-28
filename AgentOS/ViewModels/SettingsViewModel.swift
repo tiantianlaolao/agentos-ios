@@ -11,14 +11,20 @@ final class SettingsViewModel {
     var selectedModel: String = "deepseek"
 
     // OpenClaw
-    var openclawSubMode: String = "hosted" // "hosted" or "selfhosted"
+    var openclawSubMode: String = "selfhosted" // "hosted" or "selfhosted"
     var openclawUrl: String = ""
     var openclawToken: String = ""
 
     // CoPaw
-    var copawSubMode: String = "hosted"
+    var copawSubMode: String = "deploy" // "deploy" | "selfhosted"
     var copawUrl: String = ""
     var copawToken: String = ""
+    var copawDeployType: String = "local" // "cloud" | "local"
+    var copawSelfhostedType: String = "remote" // "remote" | "local"
+    var copawDeployModelMode: String = "default" // "default" | "custom"
+    var copawDeployProvider: String = "deepseek"
+    var copawDeployApiKey: String = ""
+    var copawDeployModel: String = ""
 
     // Hosted
     var hostedActivated: Bool = false
@@ -70,6 +76,12 @@ final class SettingsViewModel {
             if let v = try await db.getSetting(key: ukey("copawSubMode")) { copawSubMode = v }
             if let v = try await db.getSetting(key: ukey("copawUrl")) { copawUrl = v }
             if let v = try await db.getSetting(key: ukey("copawToken")) { copawToken = v }
+            if let v = try await db.getSetting(key: ukey("copawDeployType")) { copawDeployType = v }
+            if let v = try await db.getSetting(key: ukey("copawSelfhostedType")) { copawSelfhostedType = v }
+            if let v = try await db.getSetting(key: ukey("copawDeployModelMode")) { copawDeployModelMode = v }
+            if let v = try await db.getSetting(key: ukey("copawDeployProvider")) { copawDeployProvider = v }
+            if let v = try await db.getSetting(key: ukey("copawDeployApiKey")) { copawDeployApiKey = v }
+            if let v = try await db.getSetting(key: ukey("copawDeployModel")) { copawDeployModel = v }
             if let v = try await db.getSetting(key: ukey("locale")) { locale = v }
             if let v = try await db.getSetting(key: ukey("serverUrl")), !v.isEmpty { serverUrl = v }
             if let v = try await db.getSetting(key: ukey("hostedActivated")) { hostedActivated = v == "true" }
@@ -97,6 +109,12 @@ final class SettingsViewModel {
             try await db.setSetting(key: ukey("copawSubMode"), value: copawSubMode)
             try await db.setSetting(key: ukey("copawUrl"), value: copawUrl)
             try await db.setSetting(key: ukey("copawToken"), value: copawToken)
+            try await db.setSetting(key: ukey("copawDeployType"), value: copawDeployType)
+            try await db.setSetting(key: ukey("copawSelfhostedType"), value: copawSelfhostedType)
+            try await db.setSetting(key: ukey("copawDeployModelMode"), value: copawDeployModelMode)
+            try await db.setSetting(key: ukey("copawDeployProvider"), value: copawDeployProvider)
+            try await db.setSetting(key: ukey("copawDeployApiKey"), value: copawDeployApiKey)
+            try await db.setSetting(key: ukey("copawDeployModel"), value: copawDeployModel)
             try await db.setSetting(key: ukey("locale"), value: locale)
         } catch {
             print("[Settings] Save error: \(error)")

@@ -349,15 +349,29 @@ struct SettingsView: View {
             // Sub-mode: Hosted vs Self-hosted
             settingsSection(header: L10n.tr("settings.deployMode")) {
                 VStack(spacing: 0) {
-                    subModeRow(
-                        title: L10n.tr("settings.openclawHosted"),
-                        subtitle: L10n.tr("settings.openclawHostedDesc"),
-                        selected: viewModel.openclawSubMode == "hosted",
-                        isLast: false
-                    ) {
-                        viewModel.openclawSubMode = "hosted"
+                    // Hosted - greyed out
+                    VStack(spacing: 0) {
+                        subModeRow(
+                            title: L10n.tr("settings.openclawHosted"),
+                            subtitle: L10n.tr("settings.openclawHostedDesc"),
+                            selected: false,
+                            isLast: false
+                        ) {
+                            // no-op: disabled
+                        }
+                        .opacity(0.4)
+                        .disabled(true)
+
+                        Text(L10n.tr("settings.openclawCloudNotAvailable"))
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 52)
+                            .padding(.bottom, 8)
                     }
+
                     Divider().background(AppTheme.divider).padding(.leading, 52)
+
                     subModeRow(
                         title: L10n.tr("settings.openclawSelfhosted"),
                         subtitle: L10n.tr("settings.openclawSelfhostedDesc"),
@@ -369,44 +383,24 @@ struct SettingsView: View {
                 }
             }
 
-            if viewModel.openclawSubMode == "hosted" {
-                if authViewModel.isLoggedIn {
-                    hostedSection
-                } else {
-                    settingsSection(header: L10n.tr("settings.hostedOpenclaw")) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "person.badge.key")
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppTheme.primary)
-                                .frame(width: 24)
-                            Text(L10n.tr("settings.hostedLoginRequired"))
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppTheme.primary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                }
-            } else {
-                settingsSection(header: L10n.tr("settings.openclawUrl")) {
-                    VStack(spacing: 0) {
-                        textFieldRow(
-                            icon: "link",
-                            label: L10n.tr("settings.openclawUrl"),
-                            placeholder: L10n.tr("settings.openclawUrlPlaceholder"),
-                            text: $viewModel.openclawUrl,
-                            isSecure: false
-                        )
-                        Divider().background(AppTheme.divider).padding(.leading, 52)
-                        textFieldRow(
-                            icon: "lock.fill",
-                            label: L10n.tr("settings.openclawToken"),
-                            placeholder: L10n.tr("settings.openclawTokenPlaceholder"),
-                            text: $viewModel.openclawToken,
-                            isSecure: true
-                        )
-                    }
+            // Self-hosted always shows URL/Token fields
+            settingsSection(header: L10n.tr("settings.openclawUrl")) {
+                VStack(spacing: 0) {
+                    textFieldRow(
+                        icon: "link",
+                        label: L10n.tr("settings.openclawUrl"),
+                        placeholder: L10n.tr("settings.openclawUrlPlaceholder"),
+                        text: $viewModel.openclawUrl,
+                        isSecure: false
+                    )
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    textFieldRow(
+                        icon: "lock.fill",
+                        label: L10n.tr("settings.openclawToken"),
+                        placeholder: L10n.tr("settings.openclawTokenPlaceholder"),
+                        text: $viewModel.openclawToken,
+                        isSecure: true
+                    )
                 }
             }
         }
@@ -416,16 +410,16 @@ struct SettingsView: View {
 
     private var copawConfig: some View {
         VStack(spacing: 0) {
-            // Sub-mode
+            // Level 1: Deploy vs Self-hosted
             settingsSection(header: L10n.tr("settings.deployMode")) {
                 VStack(spacing: 0) {
                     subModeRow(
-                        title: L10n.tr("settings.copawHosted"),
-                        subtitle: L10n.tr("settings.copawHostedDesc"),
-                        selected: viewModel.copawSubMode == "hosted",
+                        title: L10n.tr("settings.copawDeploy"),
+                        subtitle: L10n.tr("settings.copawDeployDesc"),
+                        selected: viewModel.copawSubMode == "deploy",
                         isLast: false
                     ) {
-                        viewModel.copawSubMode = "hosted"
+                        viewModel.copawSubMode = "deploy"
                     }
                     Divider().background(AppTheme.divider).padding(.leading, 52)
                     subModeRow(
@@ -439,24 +433,194 @@ struct SettingsView: View {
                 }
             }
 
-            if viewModel.copawSubMode == "selfhosted" {
-                settingsSection(header: L10n.tr("settings.copawUrl")) {
+            if viewModel.copawSubMode == "deploy" {
+                // Level 2 under Deploy: Cloud (greyed out) / Local
+                settingsSection(header: L10n.tr("settings.copawDeploy")) {
                     VStack(spacing: 0) {
-                        textFieldRow(
-                            icon: "link",
-                            label: L10n.tr("settings.copawUrl"),
-                            placeholder: L10n.tr("settings.copawUrlPlaceholder"),
-                            text: $viewModel.copawUrl,
-                            isSecure: false
-                        )
+                        // Cloud - greyed out
+                        VStack(spacing: 0) {
+                            subModeRow(
+                                title: L10n.tr("settings.copawDeployCloud"),
+                                subtitle: "",
+                                selected: false,
+                                isLast: false
+                            ) {
+                                // no-op: disabled
+                            }
+                            .opacity(0.4)
+                            .disabled(true)
+
+                            Text(L10n.tr("settings.copawCloudNotAvailable"))
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.leading, 52)
+                                .padding(.bottom, 8)
+                        }
+
                         Divider().background(AppTheme.divider).padding(.leading, 52)
-                        textFieldRow(
-                            icon: "lock.fill",
-                            label: L10n.tr("settings.copawToken"),
-                            placeholder: L10n.tr("settings.copawTokenPlaceholder"),
-                            text: $viewModel.copawToken,
-                            isSecure: true
-                        )
+
+                        // Local - active
+                        subModeRow(
+                            title: L10n.tr("settings.copawDeployLocal"),
+                            subtitle: "",
+                            selected: viewModel.copawDeployType == "local",
+                            isLast: true
+                        ) {
+                            viewModel.copawDeployType = "local"
+                        }
+                    }
+                }
+
+                // Model selection: Default / Custom
+                copawModelSection
+            } else {
+                // Level 2 under Self-hosted: Remote / Local
+                settingsSection(header: L10n.tr("settings.copawSelfhosted")) {
+                    VStack(spacing: 0) {
+                        subModeRow(
+                            title: L10n.tr("settings.copawSelfhostedRemote"),
+                            subtitle: "",
+                            selected: viewModel.copawSelfhostedType == "remote",
+                            isLast: false
+                        ) {
+                            viewModel.copawSelfhostedType = "remote"
+                        }
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+                        subModeRow(
+                            title: L10n.tr("settings.copawSelfhostedLocal"),
+                            subtitle: "",
+                            selected: viewModel.copawSelfhostedType == "local",
+                            isLast: true
+                        ) {
+                            viewModel.copawSelfhostedType = "local"
+                        }
+                    }
+                }
+
+                // Show URL/Token fields for remote, localhost hint for local
+                if viewModel.copawSelfhostedType == "remote" {
+                    settingsSection(header: L10n.tr("settings.copawUrl")) {
+                        VStack(spacing: 0) {
+                            textFieldRow(
+                                icon: "link",
+                                label: L10n.tr("settings.copawUrl"),
+                                placeholder: L10n.tr("settings.copawUrlPlaceholder"),
+                                text: $viewModel.copawUrl,
+                                isSecure: false
+                            )
+                            Divider().background(AppTheme.divider).padding(.leading, 52)
+                            textFieldRow(
+                                icon: "lock.fill",
+                                label: L10n.tr("settings.copawToken"),
+                                placeholder: L10n.tr("settings.copawTokenPlaceholder"),
+                                text: $viewModel.copawToken,
+                                isSecure: true
+                            )
+                        }
+                    }
+                } else {
+                    settingsSection(header: L10n.tr("settings.copawUrl")) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "desktopcomputer")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .frame(width: 24)
+                            Text("http://localhost:8088")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textSecondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - CoPaw Model Selection
+
+    private var copawModelSection: some View {
+        VStack(spacing: 0) {
+            settingsSection(header: L10n.tr("settings.model")) {
+                VStack(spacing: 0) {
+                    subModeRow(
+                        title: L10n.tr("settings.copawModelDefault"),
+                        subtitle: "",
+                        selected: viewModel.copawDeployModelMode == "default",
+                        isLast: false
+                    ) {
+                        viewModel.copawDeployModelMode = "default"
+                    }
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    subModeRow(
+                        title: L10n.tr("settings.copawModelCustom"),
+                        subtitle: "",
+                        selected: viewModel.copawDeployModelMode == "custom",
+                        isLast: true
+                    ) {
+                        viewModel.copawDeployModelMode = "custom"
+                    }
+                }
+            }
+
+            if viewModel.copawDeployModelMode == "custom" {
+                settingsSection(header: L10n.tr("settings.copawDeployProvider")) {
+                    VStack(spacing: 0) {
+                        // Provider dropdown
+                        dropdownRow(
+                            icon: "server.rack",
+                            label: L10n.tr("settings.copawDeployProvider"),
+                            options: providers.map { (key: $0.key.rawValue, label: $0.label) },
+                            selected: viewModel.copawDeployProvider
+                        ) {
+                            viewModel.copawDeployProvider = $0
+                        }
+
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+
+                        // API Key field
+                        HStack(spacing: 12) {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .frame(width: 24)
+                            Text(L10n.tr("settings.copawDeployApiKey"))
+                                .font(.system(size: 15))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            SecureField(L10n.tr("settings.copawDeployApiKeyPlaceholder"), text: $viewModel.copawDeployApiKey)
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 180)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+
+                        // Model name field
+                        HStack(spacing: 12) {
+                            Image(systemName: "brain")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .frame(width: 24)
+                            Text(L10n.tr("settings.copawDeployModel"))
+                                .font(.system(size: 15))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            TextField(L10n.tr("settings.copawDeployModelPlaceholder"), text: $viewModel.copawDeployModel)
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 180)
+                                .autocapitalization(.none)
+                                .autocorrectionDisabled()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
                     }
                 }
             }
