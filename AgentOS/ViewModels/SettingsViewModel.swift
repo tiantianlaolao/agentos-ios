@@ -15,6 +15,12 @@ final class SettingsViewModel {
     var openclawUrl: String = ""
     var openclawToken: String = ""
 
+    // Agent (unified)
+    var agentSubMode: String = "direct" // "direct" | "deploy"
+    var agentId: String = "openclaw" // "openclaw" | "copaw" | "custom"
+    var agentUrl: String = ""
+    var agentToken: String = ""
+
     // CoPaw
     var copawSubMode: String = "deploy" // "deploy" | "selfhosted"
     var copawUrl: String = ""
@@ -73,6 +79,10 @@ final class SettingsViewModel {
             if let v = try await db.getSetting(key: ukey("openclawSubMode")) { openclawSubMode = v }
             if let v = try await db.getSetting(key: ukey("openclawUrl")) { openclawUrl = v }
             if let v = try await db.getSetting(key: ukey("openclawToken")) { openclawToken = v }
+            if let v = try await db.getSetting(key: ukey("agentSubMode")) { agentSubMode = v }
+            if let v = try await db.getSetting(key: ukey("agentId")) { agentId = v }
+            if let v = try await db.getSetting(key: ukey("agentUrl")) { agentUrl = v }
+            if let v = try await db.getSetting(key: ukey("agentToken")) { agentToken = v }
             if let v = try await db.getSetting(key: ukey("copawSubMode")) { copawSubMode = v }
             if let v = try await db.getSetting(key: ukey("copawUrl")) { copawUrl = v }
             if let v = try await db.getSetting(key: ukey("copawToken")) { copawToken = v }
@@ -106,6 +116,10 @@ final class SettingsViewModel {
             try await db.setSetting(key: ukey("openclawSubMode"), value: openclawSubMode)
             try await db.setSetting(key: ukey("openclawUrl"), value: openclawUrl)
             try await db.setSetting(key: ukey("openclawToken"), value: openclawToken)
+            try await db.setSetting(key: ukey("agentSubMode"), value: agentSubMode)
+            try await db.setSetting(key: ukey("agentId"), value: agentId)
+            try await db.setSetting(key: ukey("agentUrl"), value: agentUrl)
+            try await db.setSetting(key: ukey("agentToken"), value: agentToken)
             try await db.setSetting(key: ukey("copawSubMode"), value: copawSubMode)
             try await db.setSetting(key: ukey("copawUrl"), value: copawUrl)
             try await db.setSetting(key: ukey("copawToken"), value: copawToken)

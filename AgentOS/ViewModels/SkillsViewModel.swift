@@ -61,7 +61,7 @@ final class SkillsViewModel {
             return true
         case .openclaw:
             return openclawSubMode == "hosted"
-        case .copaw:
+        case .copaw, .agent:
             return false
         }
     }
@@ -71,7 +71,7 @@ final class SkillsViewModel {
         switch currentMode {
         case .builtin, .byok, .openclaw:
             return true
-        case .copaw:
+        case .copaw, .agent:
             return false
         }
     }
@@ -79,7 +79,7 @@ final class SkillsViewModel {
     /// Whether this mode uses an agent adapter (skills returned are all "installed")
     private var isAdapterMode: Bool {
         switch currentMode {
-        case .openclaw, .copaw:
+        case .openclaw, .copaw, .agent:
             return true
         case .builtin, .byok:
             return false

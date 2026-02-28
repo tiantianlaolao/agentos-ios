@@ -130,6 +130,7 @@ final class ChatViewModel {
         switch mode {
         case .openclaw: return .openclaw
         case .copaw: return .copaw
+        case .agent: return .agent
         case .builtin, .byok: return .builtin
         }
     }
@@ -196,6 +197,8 @@ final class ChatViewModel {
         switch connectionMode {
         case .openclaw:
             await connectOpenClaw()
+        case .agent:
+            await connectAgent()
         case .builtin, .copaw:
             connectWebSocket()
         case .byok:
@@ -305,6 +308,50 @@ final class ChatViewModel {
         }
     }
 
+    /// Connect in unified agent mode
+    private func connectAgent() async {
+        do {
+            let agentId = try await DatabaseService.shared.getSetting(key: ukey("agentId")) ?? "openclaw"
+            let agentSubMode = try await DatabaseService.shared.getSetting(key: ukey("agentSubMode")) ?? "direct"
+            let agentUrl = try await DatabaseService.shared.getSetting(key: ukey("agentUrl")) ?? ""
+            let agentToken = try await DatabaseService.shared.getSetting(key: ukey("agentToken")) ?? ""
+
+            // Direct + OpenClaw with URL: use OpenClawDirectService
+            if agentSubMode == "direct" && agentId == "openclaw" && !agentUrl.isEmpty {
+                openclawProxyMode = false
+                openClawService.configure(url: agentUrl, token: agentToken)
+                try await openClawService.ensureConnected()
+                isConnected = true
+                return
+            }
+
+            // Otherwise: connect via WS with agent fields
+            openclawProxyMode = true
+
+            let agentProtocol: String
+            switch agentId {
+            case "openclaw": agentProtocol = "openclaw-ws"
+            case "copaw": agentProtocol = "ag-ui"
+            default: agentProtocol = "openclaw-ws"
+            }
+
+            let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
+            let deviceId = await getOrCreateDeviceId()
+
+            var options = WebSocketService.ConnectOptions()
+            options.authToken = authToken
+            options.deviceId = deviceId
+            options.agentUrl = agentUrl.isEmpty ? nil : agentUrl
+            options.agentToken = agentToken.isEmpty ? nil : agentToken
+            options.agentProtocol = agentProtocol
+
+            wsService.connect(mode: .agent, options: options)
+        } catch {
+            isConnected = false
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func reconnect() {
         switch connectionMode {
         case .openclaw:
@@ -312,6 +359,13 @@ final class ChatViewModel {
                 wsService.reconnectNow()
             } else {
                 openClawService.reconnectNow()
+            }
+        case .agent:
+            // Agent mode: if using direct OpenClaw connection, reconnect that; otherwise WS
+            if !openclawProxyMode {
+                openClawService.reconnectNow()
+            } else {
+                wsService.reconnectNow()
             }
         case .byok:
             isConnected = true
@@ -387,6 +441,20 @@ final class ChatViewModel {
         case .byok:
             await sendBYOK(text: text, convId: convId, history: history)
 
+        case .agent:
+            if openclawProxyMode {
+                // WS proxy mode
+                startStreamTimeout()
+                wsService.sendChat(
+                    conversationId: convId,
+                    content: text,
+                    history: history
+                )
+            } else {
+                // Direct OpenClaw connection
+                await sendOpenClaw(text: text, convId: convId)
+            }
+
         case .openclaw:
             if openclawProxyMode {
                 // Server proxy mode: route through WebSocket like builtin/copaw
@@ -411,6 +479,12 @@ final class ChatViewModel {
             switch connectionMode {
             case .builtin, .copaw:
                 wsService.sendChatStop(conversationId: convId)
+            case .agent:
+                if openclawProxyMode {
+                    wsService.sendChatStop(conversationId: convId)
+                } else {
+                    Task { await openClawService.abortChat() }
+                }
             case .openclaw:
                 if openclawProxyMode {
                     wsService.sendChatStop(conversationId: convId)

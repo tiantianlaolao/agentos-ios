@@ -54,6 +54,9 @@ final class WebSocketService {
         var authToken: String?
         var model: String?
         var deviceId: String?
+        var agentUrl: String?
+        var agentToken: String?
+        var agentProtocol: String?
     }
 
     // MARK: - Init
@@ -142,7 +145,10 @@ final class WebSocketService {
             copawToken: options.copawToken,
             deviceId: options.deviceId,
             authToken: options.authToken,
-            model: options.model
+            model: options.model,
+            agentUrl: options.agentUrl,
+            agentToken: options.agentToken,
+            agentProtocol: options.agentProtocol
         )
         let connectMsg = WSMessage(
             type: .connect,

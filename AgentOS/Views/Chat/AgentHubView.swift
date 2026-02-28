@@ -17,18 +17,11 @@ private let agentCards: [AgentCard] = [
         color: AppTheme.success
     ),
     AgentCard(
-        id: .openclaw,
-        nameKey: "chat.tabOpenclaw",
-        descKey: "chat.tabOpenclawDesc",
+        id: .agent,
+        nameKey: "chat.tabAgent",
+        descKey: "chat.tabAgentDesc",
         icon: "bolt.fill",
         color: AppTheme.warning
-    ),
-    AgentCard(
-        id: .copaw,
-        nameKey: "chat.tabCopaw",
-        descKey: "chat.tabCopawDesc",
-        icon: "pawprint.fill",
-        color: AppTheme.primary
     ),
 ]
 

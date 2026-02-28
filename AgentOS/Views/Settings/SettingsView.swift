@@ -9,8 +9,7 @@ struct SettingsView: View {
     private var modes: [(key: ConnectionMode, titleKey: String, descKey: String, icon: String, color: Color)] {
         [
             (.builtin, "settings.builtin", "settings.builtinDesc", "cpu", Color(hex: "#2d7d46")),
-            (.openclaw, "settings.openclaw", "settings.openclawDesc", "bolt.fill", Color(hex: "#c26a1b")),
-            (.copaw, "settings.copaw", "settings.copawDesc", "pawprint.fill", Color(hex: "#1b6bc2")),
+            (.agent, "settings.agent", "settings.agentDesc", "bolt.fill", Color(hex: "#c26a1b")),
         ]
     }
 
@@ -110,6 +109,14 @@ struct SettingsView: View {
                 .foregroundStyle(modeColor)
             if viewModel.mode == .builtin && viewModel.builtinSubMode == "byok" {
                 Text("(\(L10n.tr("settings.builtinByok")))")
+                    .font(.system(size: 11))
+                    .foregroundStyle(modeColor.opacity(0.8))
+            }
+            if viewModel.mode == .agent {
+                let agentLabel = viewModel.agentId == "openclaw" ? "OpenClaw" :
+                                 viewModel.agentId == "copaw" ? "CoPaw" :
+                                 L10n.tr("settings.agentCustom")
+                Text("(\(agentLabel))")
                     .font(.system(size: 11))
                     .foregroundStyle(modeColor.opacity(0.8))
             }
@@ -249,6 +256,8 @@ struct SettingsView: View {
         switch viewModel.mode {
         case .builtin:
             builtinConfig
+        case .agent:
+            agentConfig
         case .openclaw:
             openclawConfig
         case .copaw:
@@ -340,6 +349,178 @@ struct SettingsView: View {
                 .padding(.vertical, 12)
             }
         }
+    }
+
+    // MARK: - Agent Config (unified)
+
+    private var agentConfig: some View {
+        VStack(spacing: 0) {
+            // Sub-mode: Direct vs Deploy
+            settingsSection(header: L10n.tr("settings.agentSubMode")) {
+                VStack(spacing: 0) {
+                    subModeRow(
+                        title: L10n.tr("settings.agentDirect"),
+                        subtitle: L10n.tr("settings.agentDirectDesc"),
+                        selected: viewModel.agentSubMode == "direct",
+                        isLast: false
+                    ) {
+                        viewModel.agentSubMode = "direct"
+                    }
+                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                    subModeRow(
+                        title: L10n.tr("settings.agentDeploy"),
+                        subtitle: L10n.tr("settings.agentDeployDesc"),
+                        selected: viewModel.agentSubMode == "deploy",
+                        isLast: true
+                    ) {
+                        viewModel.agentSubMode = "deploy"
+                    }
+                }
+            }
+
+            if viewModel.agentSubMode == "direct" {
+                // Agent selection cards
+                settingsSection(header: L10n.tr("settings.agentSelection")) {
+                    VStack(spacing: 0) {
+                        agentSelectionRow(
+                            title: "OpenClaw",
+                            icon: "bolt.fill",
+                            color: Color(hex: "#c26a1b"),
+                            selected: viewModel.agentId == "openclaw",
+                            isLast: false
+                        ) {
+                            viewModel.agentId = "openclaw"
+                        }
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+                        agentSelectionRow(
+                            title: "CoPaw",
+                            icon: "pawprint.fill",
+                            color: Color(hex: "#1b6bc2"),
+                            selected: viewModel.agentId == "copaw",
+                            isLast: false
+                        ) {
+                            viewModel.agentId = "copaw"
+                        }
+                        Divider().background(AppTheme.divider).padding(.leading, 52)
+                        agentSelectionRow(
+                            title: L10n.tr("settings.agentCustom"),
+                            icon: "puzzlepiece.fill",
+                            color: AppTheme.textTertiary,
+                            selected: viewModel.agentId == "custom",
+                            isLast: true
+                        ) {
+                            viewModel.agentId = "custom"
+                        }
+                    }
+                }
+
+                // Agent-specific fields
+                if viewModel.agentId == "openclaw" {
+                    settingsSection(header: L10n.tr("settings.agentConnection")) {
+                        VStack(spacing: 0) {
+                            textFieldRow(
+                                icon: "link",
+                                label: L10n.tr("settings.agentUrlLabel"),
+                                placeholder: "ws://your-server:18789",
+                                text: $viewModel.agentUrl,
+                                isSecure: false
+                            )
+                            Divider().background(AppTheme.divider).padding(.leading, 52)
+                            textFieldRow(
+                                icon: "lock.fill",
+                                label: "Token",
+                                placeholder: L10n.tr("settings.agentTokenPlaceholder"),
+                                text: $viewModel.agentToken,
+                                isSecure: true
+                            )
+                        }
+                    }
+                } else if viewModel.agentId == "copaw" {
+                    settingsSection(header: L10n.tr("settings.agentConnection")) {
+                        VStack(spacing: 0) {
+                            textFieldRow(
+                                icon: "link",
+                                label: L10n.tr("settings.agentUrlLabel"),
+                                placeholder: "http://your-server:8088/agent",
+                                text: $viewModel.agentUrl,
+                                isSecure: false
+                            )
+                            Divider().background(AppTheme.divider).padding(.leading, 52)
+                            textFieldRow(
+                                icon: "lock.fill",
+                                label: "Token",
+                                placeholder: L10n.tr("settings.agentTokenOptionalPlaceholder"),
+                                text: $viewModel.agentToken,
+                                isSecure: true
+                            )
+                        }
+                    }
+                } else {
+                    // Custom agent - coming soon
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 14))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Text(L10n.tr("settings.agentCustomComingSoon"))
+                            .font(.system(size: 13))
+                            .foregroundStyle(AppTheme.textTertiary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            } else {
+                // Deploy sub-mode
+                HStack {
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text(L10n.tr("settings.agentDeployHint"))
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
+    /// Agent selection row with icon and radio
+    private func agentSelectionRow(title: String, icon: String, color: Color, selected: Bool, isLast: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                action()
+            }
+        }) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(selected ? AppTheme.primary : AppTheme.textTertiary.opacity(0.5), lineWidth: 1.5)
+                        .frame(width: 18, height: 18)
+                    if selected {
+                        Circle()
+                            .fill(AppTheme.primary)
+                            .frame(width: 9, height: 9)
+                    }
+                }
+
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundStyle(color)
+                    .frame(width: 20)
+
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(selected ? AppTheme.primary.opacity(0.05) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - OpenClaw Config

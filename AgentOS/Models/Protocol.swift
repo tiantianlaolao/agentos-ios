@@ -41,6 +41,7 @@ enum ConnectionMode: String, Codable, Sendable, CaseIterable {
     case openclaw
     case copaw
     case byok
+    case agent
 }
 
 // MARK: - LLMProvider
@@ -106,6 +107,9 @@ struct ConnectPayload: Codable, Sendable {
     var deviceId: String?
     var authToken: String?
     var model: String?
+    var agentUrl: String?
+    var agentToken: String?
+    var agentProtocol: String?
 }
 
 struct ConnectedPayload: Codable, Sendable {

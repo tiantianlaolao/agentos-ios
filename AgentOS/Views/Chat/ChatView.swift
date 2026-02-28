@@ -273,6 +273,7 @@ struct ChatView: View {
         case .builtin: L10n.tr("chat.modeBuiltin")
         case .openclaw: "OpenClaw"
         case .copaw: "CoPaw"
+        case .agent: L10n.tr("chat.tabAgent")
         case .byok: "BYOK"
         }
     }
