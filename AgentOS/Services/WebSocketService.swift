@@ -48,7 +48,6 @@ final class WebSocketService {
         var apiKey: String?
         var openclawUrl: String?
         var openclawToken: String?
-        var openclawHosted: Bool?
         var copawUrl: String?
         var copawToken: String?
         var authToken: String?
@@ -140,7 +139,6 @@ final class WebSocketService {
             apiKey: options.apiKey,
             openclawUrl: options.openclawUrl,
             openclawToken: options.openclawToken,
-            openclawHosted: options.openclawHosted,
             copawUrl: options.copawUrl,
             copawToken: options.copawToken,
             deviceId: options.deviceId,

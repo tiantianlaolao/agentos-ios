@@ -66,7 +66,6 @@ enum ErrorCode: String, Codable, Sendable {
     case providerError = "PROVIDER_ERROR"
     case skillError = "SKILL_ERROR"
     case openclawDisconnected = "OPENCLAW_DISCONNECTED"
-    case hostedQuotaExceeded = "HOSTED_QUOTA_EXCEEDED"
     case internalError = "INTERNAL_ERROR"
 }
 
@@ -101,7 +100,6 @@ struct ConnectPayload: Codable, Sendable {
     var apiKey: String?
     var openclawUrl: String?
     var openclawToken: String?
-    var openclawHosted: Bool?
     var copawUrl: String?
     var copawToken: String?
     var deviceId: String?
@@ -116,12 +114,6 @@ struct ConnectedPayload: Codable, Sendable {
     let sessionId: String
     let mode: ConnectionMode
     let skills: [String]
-    var hostedQuota: HostedQuota?
-}
-
-struct HostedQuota: Codable, Sendable {
-    let used: Int
-    let total: Int
 }
 
 struct ChatSendPayload: Codable, Sendable {

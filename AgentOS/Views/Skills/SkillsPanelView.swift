@@ -96,11 +96,7 @@ struct SkillsPanelView: View {
         }
         .task {
             authToken = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""
-            let userId = (try? await DatabaseService.shared.getSetting(key: "auth_userId")) ?? ""
-            let ukey = userId.isEmpty ? "openclawSubMode" : "\(userId):openclawSubMode"
-            let subMode = (try? await DatabaseService.shared.getSetting(key: ukey)) ?? "hosted"
             viewModel.currentMode = mode
-            viewModel.openclawSubMode = subMode
             viewModel.setup(wsService: wsService)
             viewModel.refreshSkills()
         }

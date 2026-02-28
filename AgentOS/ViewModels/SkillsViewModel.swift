@@ -30,7 +30,6 @@ final class SkillsViewModel {
     var selectedLibrarySkill: SkillLibraryItem?
     var addSkillMode: AddSkillMode?
     var currentMode: ConnectionMode = .builtin
-    var openclawSubMode: String = "hosted"
 
     // Skill config
     var configFields: [SkillConfigField] = []
@@ -54,14 +53,12 @@ final class SkillsViewModel {
     private weak var wsService: WebSocketService?
 
     /// Whether the current mode supports skill library (install/uninstall)
-    /// Only builtin and OpenClaw hosted have a library
+    /// Mobile: only builtin mode has library; external agents are always read-only
     var hasLibrary: Bool {
         switch currentMode {
         case .builtin, .byok:
             return true
-        case .openclaw:
-            return openclawSubMode == "hosted"
-        case .copaw, .agent:
+        case .openclaw, .copaw, .agent:
             return false
         }
     }

@@ -32,33 +32,6 @@ struct ErrorResponse: Codable, Sendable {
     let error: String
 }
 
-// MARK: - Hosted
-
-/// Server returns `{ activated: Bool, account: { ... } | null }`
-struct HostedStatusResponse: Codable, Sendable {
-    let activated: Bool
-    let account: HostedAccount?
-}
-
-struct HostedAccount: Codable, Sendable {
-    let userId: String?
-    let quotaUsed: Int
-    let quotaTotal: Int
-    var instanceStatus: String?
-    var port: Int?
-    var instanceToken: String?
-}
-
-struct RedeemCodeRequest: Codable, Sendable {
-    let code: String
-}
-
-struct RedeemCodeResponse: Codable, Sendable {
-    let success: Bool?
-    let account: HostedAccount?
-    let error: String?
-}
-
 // MARK: - Memory
 
 /// Server returns `{ ok: Bool, data: { content: String, updatedAt: String? } | null }`

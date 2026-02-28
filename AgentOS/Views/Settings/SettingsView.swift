@@ -414,49 +414,8 @@ struct SettingsView: View {
                     }
                 }
 
-                // Agent-specific fields
-                if viewModel.agentId == "openclaw" {
-                    settingsSection(header: L10n.tr("settings.agentConnection")) {
-                        VStack(spacing: 0) {
-                            textFieldRow(
-                                icon: "link",
-                                label: L10n.tr("settings.agentUrlLabel"),
-                                placeholder: "ws://your-server:18789",
-                                text: $viewModel.agentUrl,
-                                isSecure: false
-                            )
-                            Divider().background(AppTheme.divider).padding(.leading, 52)
-                            textFieldRow(
-                                icon: "lock.fill",
-                                label: "Token",
-                                placeholder: L10n.tr("settings.agentTokenPlaceholder"),
-                                text: $viewModel.agentToken,
-                                isSecure: true
-                            )
-                        }
-                    }
-                } else if viewModel.agentId == "copaw" {
-                    settingsSection(header: L10n.tr("settings.agentConnection")) {
-                        VStack(spacing: 0) {
-                            textFieldRow(
-                                icon: "link",
-                                label: L10n.tr("settings.agentUrlLabel"),
-                                placeholder: "http://your-server:8088/agent",
-                                text: $viewModel.agentUrl,
-                                isSecure: false
-                            )
-                            Divider().background(AppTheme.divider).padding(.leading, 52)
-                            textFieldRow(
-                                icon: "lock.fill",
-                                label: "Token",
-                                placeholder: L10n.tr("settings.agentTokenOptionalPlaceholder"),
-                                text: $viewModel.agentToken,
-                                isSecure: true
-                            )
-                        }
-                    }
-                } else {
-                    // Custom agent - coming soon
+                // Custom agent - coming soon
+                if viewModel.agentId == "custom" {
                     HStack {
                         Image(systemName: "info.circle")
                             .font(.system(size: 14))
@@ -468,6 +427,87 @@ struct SettingsView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                } else {
+                    // Direct target: Local Computer vs Remote Server
+                    settingsSection(header: L10n.tr("settings.agentConnection")) {
+                        VStack(spacing: 0) {
+                            subModeRow(
+                                title: L10n.tr("settings.directLocalComputer"),
+                                subtitle: "",
+                                selected: viewModel.directTarget == "local",
+                                isLast: false
+                            ) {
+                                viewModel.directTarget = "local"
+                            }
+                            Divider().background(AppTheme.divider).padding(.leading, 52)
+                            subModeRow(
+                                title: L10n.tr("settings.directRemoteServer"),
+                                subtitle: "",
+                                selected: viewModel.directTarget == "remote",
+                                isLast: true
+                            ) {
+                                viewModel.directTarget = "remote"
+                            }
+                        }
+                    }
+
+                    if viewModel.directTarget == "local" {
+                        // Local: show hint text, no URL/Token fields
+                        HStack {
+                            Image(systemName: "desktopcomputer")
+                                .font(.system(size: 14))
+                                .foregroundStyle(AppTheme.textTertiary)
+                            Text(L10n.tr("settings.directLocalMobileHint"))
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    } else {
+                        // Remote: show URL + Token fields
+                        if viewModel.agentId == "openclaw" {
+                            settingsSection(header: "") {
+                                VStack(spacing: 0) {
+                                    textFieldRow(
+                                        icon: "link",
+                                        label: L10n.tr("settings.agentUrlLabel"),
+                                        placeholder: "ws://your-server:18789",
+                                        text: $viewModel.agentUrl,
+                                        isSecure: false
+                                    )
+                                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                                    textFieldRow(
+                                        icon: "lock.fill",
+                                        label: "Token",
+                                        placeholder: L10n.tr("settings.agentTokenPlaceholder"),
+                                        text: $viewModel.agentToken,
+                                        isSecure: true
+                                    )
+                                }
+                            }
+                        } else if viewModel.agentId == "copaw" {
+                            settingsSection(header: "") {
+                                VStack(spacing: 0) {
+                                    textFieldRow(
+                                        icon: "link",
+                                        label: L10n.tr("settings.agentUrlLabel"),
+                                        placeholder: "http://your-server:8088/agent",
+                                        text: $viewModel.agentUrl,
+                                        isSecure: false
+                                    )
+                                    Divider().background(AppTheme.divider).padding(.leading, 52)
+                                    textFieldRow(
+                                        icon: "lock.fill",
+                                        label: "Token",
+                                        placeholder: L10n.tr("settings.agentTokenOptionalPlaceholder"),
+                                        text: $viewModel.agentToken,
+                                        isSecure: true
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 // Deploy sub-mode
@@ -527,44 +567,7 @@ struct SettingsView: View {
 
     private var openclawConfig: some View {
         VStack(spacing: 0) {
-            // Sub-mode: Hosted vs Self-hosted
-            settingsSection(header: L10n.tr("settings.deployMode")) {
-                VStack(spacing: 0) {
-                    // Hosted - greyed out
-                    VStack(spacing: 0) {
-                        subModeRow(
-                            title: L10n.tr("settings.openclawHosted"),
-                            subtitle: L10n.tr("settings.openclawHostedDesc"),
-                            selected: false,
-                            isLast: false
-                        ) {
-                            // no-op: disabled
-                        }
-                        .opacity(0.4)
-                        .disabled(true)
-
-                        Text(L10n.tr("settings.openclawCloudNotAvailable"))
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 52)
-                            .padding(.bottom, 8)
-                    }
-
-                    Divider().background(AppTheme.divider).padding(.leading, 52)
-
-                    subModeRow(
-                        title: L10n.tr("settings.openclawSelfhosted"),
-                        subtitle: L10n.tr("settings.openclawSelfhostedDesc"),
-                        selected: viewModel.openclawSubMode == "selfhosted",
-                        isLast: true
-                    ) {
-                        viewModel.openclawSubMode = "selfhosted"
-                    }
-                }
-            }
-
-            // Self-hosted always shows URL/Token fields
+            // URL/Token fields
             settingsSection(header: L10n.tr("settings.openclawUrl")) {
                 VStack(spacing: 0) {
                     textFieldRow(
@@ -772,140 +775,6 @@ struct SettingsView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Hosted Section (OpenClaw > Hosted)
-
-    private var hostedSection: some View {
-        settingsSection(header: L10n.tr("settings.hostedOpenclaw")) {
-            if viewModel.hostedActivated {
-                VStack(spacing: 8) {
-                    // Status row
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(AppTheme.success)
-                            .frame(width: 24)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.tr("settings.activated"))
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(AppTheme.success)
-
-                            if viewModel.hostedInstanceStatus == "provisioning" {
-                                HStack(spacing: 6) {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                        .tint(AppTheme.warning)
-                                    Text(L10n.tr("settings.instanceProvisioning"))
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(AppTheme.warning)
-                                }
-                            } else if viewModel.hostedInstanceStatus == "error" {
-                                Text(L10n.tr("settings.hostedError"))
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(AppTheme.error)
-                            }
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-
-                    // Quota bar
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(L10n.tr("settings.hostedQuota", ["used": "\(viewModel.hostedQuotaUsed)", "total": "\(viewModel.hostedQuotaTotal)"]))
-                                .font(.system(size: 13))
-                                .foregroundStyle(AppTheme.textSecondary)
-                            Spacer()
-                        }
-
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(AppTheme.surfaceLight)
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(quotaColor)
-                                    .frame(width: max(0, geo.size.width * quotaProgress))
-                            }
-                        }
-                        .frame(height: 4)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-                }
-            } else {
-                VStack(spacing: 10) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "ticket.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppTheme.textTertiary)
-                            .frame(width: 24)
-                        Text(L10n.tr("settings.enterInvitationCode"))
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppTheme.textSecondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-
-                    HStack(spacing: 10) {
-                        TextField("AOS-XXXXX", text: $viewModel.invitationCode)
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background(AppTheme.surfaceLight)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .autocapitalization(.allCharacters)
-                            .autocorrectionDisabled()
-
-                        Button {
-                            Task { await viewModel.activateInvitationCode() }
-                        } label: {
-                            Group {
-                                if viewModel.isActivating {
-                                    ProgressView()
-                                        .tint(.white)
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Text(L10n.tr("settings.activate"))
-                                        .font(.system(size: 14, weight: .medium))
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .background(
-                                viewModel.invitationCode.trimmed.isEmpty || viewModel.isActivating
-                                    ? AppTheme.primary.opacity(0.4)
-                                    : AppTheme.primary
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .disabled(viewModel.invitationCode.trimmed.isEmpty || viewModel.isActivating)
-                    }
-                    .padding(.horizontal, 16)
-
-                    if !viewModel.activationError.isEmpty {
-                        Text(viewModel.activationError)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 16)
-                    }
-                }
-                .padding(.bottom, 12)
-            }
-        }
-    }
-
-    private var quotaProgress: CGFloat {
-        guard viewModel.hostedQuotaTotal > 0 else { return 0 }
-        return min(1, CGFloat(viewModel.hostedQuotaUsed) / CGFloat(viewModel.hostedQuotaTotal))
-    }
-
-    private var quotaColor: Color {
-        quotaProgress > 0.9 ? AppTheme.error : quotaProgress > 0.7 ? AppTheme.warning : AppTheme.success
     }
 
     // MARK: - Language Row (Dropdown)

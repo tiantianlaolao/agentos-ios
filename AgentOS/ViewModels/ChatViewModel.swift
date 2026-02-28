@@ -304,8 +304,7 @@ final class ChatViewModel {
                 openclawProxyMode = true
                 connectWebSocketForOpenClaw(
                     openclawUrl: openclawUrl,
-                    openclawToken: openclawToken,
-                    openclawHosted: openclawSubMode == "hosted"
+                    openclawToken: openclawToken
                 )
                 return
             }
@@ -321,7 +320,7 @@ final class ChatViewModel {
     }
 
     /// Connect via WebSocket in OpenClaw mode (server proxy for admin users with empty URL)
-    private func connectWebSocketForOpenClaw(openclawUrl: String, openclawToken: String, openclawHosted: Bool) {
+    private func connectWebSocketForOpenClaw(openclawUrl: String, openclawToken: String) {
         Task {
             let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
             let deviceId = await getOrCreateDeviceId()
@@ -331,7 +330,6 @@ final class ChatViewModel {
             options.deviceId = deviceId
             options.openclawUrl = openclawUrl
             options.openclawToken = openclawToken
-            options.openclawHosted = openclawHosted
 
             wsService.connect(mode: .openclaw, options: options)
         }

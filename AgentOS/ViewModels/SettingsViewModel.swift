@@ -18,6 +18,7 @@ final class SettingsViewModel {
     // Agent (unified)
     var agentSubMode: String = "direct" // "direct" | "deploy"
     var agentId: String = "openclaw" // "openclaw" | "copaw" | "custom"
+    var directTarget: String = "remote" // "local" | "remote"
     var agentUrl: String = ""
     var agentToken: String = ""
 
@@ -32,15 +33,6 @@ final class SettingsViewModel {
     var copawDeployApiKey: String = ""
     var copawDeployModel: String = ""
 
-    // Hosted
-    var hostedActivated: Bool = false
-    var hostedQuotaUsed: Int = 0
-    var hostedQuotaTotal: Int = 0
-    var hostedInstanceStatus: String = "pending"
-    var invitationCode: String = ""
-    var isActivating: Bool = false
-    var activationError: String = ""
-
     // App
     var locale: String = "zh"
     var serverUrl: String = "http://43.155.104.45:3100"
@@ -50,7 +42,6 @@ final class SettingsViewModel {
     var showSaved: Bool = false
 
     private let db = DatabaseService.shared
-    private var pollTask: Task<Void, Never>?
     private var currentUserId: String = ""
 
     /// Build a user-specific settings key
@@ -81,6 +72,7 @@ final class SettingsViewModel {
             if let v = try await db.getSetting(key: ukey("openclawToken")) { openclawToken = v }
             if let v = try await db.getSetting(key: ukey("agentSubMode")) { agentSubMode = v }
             if let v = try await db.getSetting(key: ukey("agentId")) { agentId = v }
+            if let v = try await db.getSetting(key: ukey("directTarget")) { directTarget = v }
             if let v = try await db.getSetting(key: ukey("agentUrl")) { agentUrl = v }
             if let v = try await db.getSetting(key: ukey("agentToken")) { agentToken = v }
             if let v = try await db.getSetting(key: ukey("copawSubMode")) { copawSubMode = v }
@@ -94,7 +86,6 @@ final class SettingsViewModel {
             if let v = try await db.getSetting(key: ukey("copawDeployModel")) { copawDeployModel = v }
             if let v = try await db.getSetting(key: ukey("locale")) { locale = v }
             if let v = try await db.getSetting(key: ukey("serverUrl")), !v.isEmpty { serverUrl = v }
-            if let v = try await db.getSetting(key: ukey("hostedActivated")) { hostedActivated = v == "true" }
         } catch {
             print("[Settings] Load error: \(error)")
         }
@@ -105,9 +96,6 @@ final class SettingsViewModel {
            (mode == .copaw && agentId == "copaw") {
             mode = .agent
         }
-
-        // Fetch hosted status
-        await fetchHostedStatus()
     }
 
     // MARK: - Save
@@ -137,6 +125,7 @@ final class SettingsViewModel {
             try await db.setSetting(key: ukey("openclawToken"), value: openclawToken)
             try await db.setSetting(key: ukey("agentSubMode"), value: agentSubMode)
             try await db.setSetting(key: ukey("agentId"), value: agentId)
+            try await db.setSetting(key: ukey("directTarget"), value: directTarget)
             try await db.setSetting(key: ukey("agentUrl"), value: agentUrl)
             try await db.setSetting(key: ukey("agentToken"), value: agentToken)
             try await db.setSetting(key: ukey("copawSubMode"), value: copawSubMode)
@@ -160,79 +149,4 @@ final class SettingsViewModel {
         }
     }
 
-    // MARK: - Hosted
-
-    func fetchHostedStatus() async {
-        do {
-            let token = try await db.getSetting(key: "auth_token")
-            guard let token, token != "skip" else { return }
-
-            let service = HostedAPIService(baseURL: serverUrl)
-            let status = try await service.getStatus(authToken: token)
-            hostedActivated = status.activated
-            if let account = status.account {
-                hostedQuotaUsed = account.quotaUsed
-                hostedQuotaTotal = account.quotaTotal
-                hostedInstanceStatus = account.instanceStatus ?? "ready"
-            }
-
-            if hostedActivated {
-                try await db.setSetting(key: ukey("hostedActivated"), value: "true")
-            }
-
-            // Poll if provisioning
-            if hostedInstanceStatus == "provisioning" {
-                startPolling(token: token)
-            }
-        } catch {
-            // ignore
-        }
-    }
-
-    func activateInvitationCode() async {
-        guard !invitationCode.trimmed.isEmpty else { return }
-        isActivating = true
-        activationError = ""
-        do {
-            let token = try await db.getSetting(key: "auth_token")
-            guard let token, token != "skip" else {
-                activationError = "请先登录"
-                isActivating = false
-                return
-            }
-            let service = HostedAPIService(baseURL: serverUrl)
-            let result = try await service.redeemCode(invitationCode.trimmed, authToken: token)
-            if result.success == true {
-                hostedActivated = true
-                try await db.setSetting(key: ukey("hostedActivated"), value: "true")
-                invitationCode = ""
-                await fetchHostedStatus()
-            } else {
-                activationError = result.error ?? "激活失败"
-            }
-        } catch {
-            activationError = error.localizedDescription
-            print("[Settings] Activation error: \(error)")
-        }
-        isActivating = false
-    }
-
-    private func startPolling(token: String) {
-        pollTask?.cancel()
-        pollTask = Task {
-            while !Task.isCancelled && hostedInstanceStatus == "provisioning" {
-                try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled else { break }
-                do {
-                    let service = HostedAPIService(baseURL: serverUrl)
-                    let status = try await service.getStatus(authToken: token)
-                    if let account = status.account {
-                        hostedInstanceStatus = account.instanceStatus ?? "ready"
-                        hostedQuotaUsed = account.quotaUsed
-                        hostedQuotaTotal = account.quotaTotal
-                    }
-                } catch { break }
-            }
-        }
-    }
 }
