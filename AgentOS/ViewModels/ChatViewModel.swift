@@ -63,6 +63,7 @@ final class ChatViewModel {
     private var currentUserId = "anonymous"
     /// True when OpenClaw mode uses WebSocket server proxy (empty URL, admin user)
     private var openclawProxyMode = false
+    private var welcomeShown = false
 
     // Services (wsService exposed for skills panel integration)
     let wsService = WebSocketService()
@@ -218,9 +219,47 @@ final class ChatViewModel {
             case .byok:
                 // BYOK doesn't need a persistent connection — calls API directly
                 isConnected = true
+                showWelcomeIfNeeded()
             case .agent:
                 // Fallback (should not reach here since isAgentOrigin handles it)
                 await connectAgent()
+            }
+        }
+    }
+
+    private func showWelcomeIfNeeded() {
+        guard !welcomeShown, messages.isEmpty, connectionMode == .builtin else { return }
+        welcomeShown = true
+
+        let serverUrl = "http://43.155.104.45:3100"
+        Task {
+            do {
+                let url = URL(string: "\(serverUrl)/assistant/config")!
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let welcomeDict = json["welcomeMessage"] as? [String: String] {
+                    let lang = Locale.preferredLanguages.first?.hasPrefix("zh") == true ? "zh" : "en"
+                    let welcomeText = welcomeDict[lang] ?? welcomeDict["en"] ?? ""
+                    if !welcomeText.isEmpty {
+                        guard let convId = self.currentConversationId else { return }
+                        let msg = ChatMessage(
+                            conversationId: convId,
+                            role: .assistant,
+                            content: welcomeText
+                        )
+                        self.messages.insert(msg, at: 0)
+                    }
+                }
+            } catch {
+                // Fallback: use static welcome from L10n
+                guard let convId = self.currentConversationId else { return }
+                let welcomeText = L10n.tr("chat.welcome")
+                let msg = ChatMessage(
+                    conversationId: convId,
+                    role: .assistant,
+                    content: welcomeText
+                )
+                self.messages.insert(msg, at: 0)
             }
         }
     }
@@ -686,6 +725,7 @@ final class ChatViewModel {
             isConnected = true
             // Request skill list on connection (like Android does)
             wsService.send(WSMessage(type: .skillListRequest))
+            showWelcomeIfNeeded()
 
         case .chatChunk:
             if let payload = message.payload?.dictValue,

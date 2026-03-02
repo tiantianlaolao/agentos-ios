@@ -88,6 +88,20 @@ struct SettingsView: View {
         .task {
             await viewModel.loadSettings()
         }
+        .alert(L10n.tr("settings.betaRequired"), isPresented: $showBetaAlert) {
+            TextField(L10n.tr("settings.betaCodePlaceholder"), text: $betaCode)
+                .autocapitalization(.allCharacters)
+            Button(betaLoading ? L10n.tr("settings.betaActivating") : L10n.tr("settings.betaActivate")) {
+                activateBeta()
+            }
+            .disabled(betaLoading)
+            Button(L10n.tr("chat.cancel"), role: .cancel) {
+                betaCode = ""
+                betaError = ""
+            }
+        } message: {
+            Text(betaError.isEmpty ? L10n.tr("settings.betaRequiredDesc") : betaError)
+        }
     }
 
     // MARK: - Current Mode Bar
@@ -135,6 +149,11 @@ struct SettingsView: View {
     // MARK: - Account Section
 
     @State private var showLoginSheet = false
+    @State private var showBetaAlert = false
+    @State private var betaCode = ""
+    @State private var betaLoading = false
+    @State private var betaError = ""
+    @State private var pendingAgentId = ""
 
     private var accountSection: some View {
         Group {
@@ -399,7 +418,7 @@ struct SettingsView: View {
                             selected: viewModel.agentId == "copaw",
                             isLast: false
                         ) {
-                            viewModel.agentId = "copaw"
+                            checkBetaAndSelect(agentId: "copaw")
                         }
                         Divider().background(AppTheme.divider).padding(.leading, 52)
                         agentSelectionRow(
@@ -409,7 +428,7 @@ struct SettingsView: View {
                             selected: viewModel.agentId == "custom",
                             isLast: true
                         ) {
-                            viewModel.agentId = "custom"
+                            checkBetaAndSelect(agentId: "custom")
                         }
                     }
                 }
@@ -523,6 +542,86 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
+        }
+    }
+
+    // MARK: - Beta Gate
+
+    private func checkBetaAndSelect(agentId: String) {
+        let serverUrl = viewModel.serverUrl
+        Task {
+            do {
+                let token = try await DatabaseService.shared.getSetting(key: "auth_token") ?? ""
+                guard !token.isEmpty else {
+                    // No token, show beta alert
+                    await MainActor.run {
+                        pendingAgentId = agentId
+                        showBetaAlert = true
+                    }
+                    return
+                }
+                var request = URLRequest(url: URL(string: "\(serverUrl)/hosted/beta-status")!)
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                let (data, _) = try await URLSession.shared.data(for: request)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let hasBeta = json["hasBeta"] as? Bool, hasBeta {
+                    await MainActor.run {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            viewModel.agentId = agentId
+                        }
+                    }
+                } else {
+                    await MainActor.run {
+                        pendingAgentId = agentId
+                        showBetaAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    pendingAgentId = agentId
+                    showBetaAlert = true
+                }
+            }
+        }
+    }
+
+    private func activateBeta() {
+        guard !betaCode.isEmpty else { return }
+        let serverUrl = viewModel.serverUrl
+        betaLoading = true
+        betaError = ""
+
+        Task {
+            do {
+                let token = try await DatabaseService.shared.getSetting(key: "auth_token") ?? ""
+                var request = URLRequest(url: URL(string: "\(serverUrl)/hosted/beta-activate")!)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.httpBody = try JSONSerialization.data(withJSONObject: ["code": betaCode.trimmingCharacters(in: .whitespaces)])
+                let (data, _) = try await URLSession.shared.data(for: request)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let success = json["success"] as? Bool, success {
+                    await MainActor.run {
+                        showBetaAlert = false
+                        betaCode = ""
+                        betaError = ""
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            viewModel.agentId = pendingAgentId
+                        }
+                    }
+                } else {
+                    let errorMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+                    await MainActor.run {
+                        betaError = errorMsg ?? L10n.tr("settings.betaFailed")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    betaError = L10n.tr("settings.betaFailed")
+                }
+            }
+            await MainActor.run { betaLoading = false }
         }
     }
 
