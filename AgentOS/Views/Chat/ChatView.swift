@@ -121,7 +121,7 @@ struct ChatView: View {
                 }
             }
         }
-        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.pdf, .plainText, .commaSeparatedText, .image]) { result in
+        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.pdf, .plainText, .commaSeparatedText, .image, .html, .json, .xml, .zip, .spreadsheet, .presentation, .data]) { result in
             guard case .success(let url) = result else { return }
             guard url.startAccessingSecurityScopedResource() else { return }
             defer { url.stopAccessingSecurityScopedResource() }
@@ -136,8 +136,18 @@ struct ChatView: View {
                 case "jpg", "jpeg": mimeType = "image/jpeg"
                 case "png": mimeType = "image/png"
                 case "gif": mimeType = "image/gif"
+                case "webp": mimeType = "image/webp"
                 case "csv": mimeType = "text/csv"
-                default: mimeType = "text/plain"
+                case "html", "htm": mimeType = "text/html"
+                case "json": mimeType = "application/json"
+                case "xml": mimeType = "application/xml"
+                case "md", "markdown": mimeType = "text/markdown"
+                case "zip": mimeType = "application/zip"
+                case "doc": mimeType = "application/msword"
+                case "docx": mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                case "xlsx": mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                case "pptx": mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                default: mimeType = "application/octet-stream"
                 }
                 let deviceId = try? await DatabaseService.shared.getSetting(key: "deviceId")
                 do {
