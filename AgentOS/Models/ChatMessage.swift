@@ -50,14 +50,14 @@ extension ChatMessage: FetchableRecord, PersistableRecord {
     }
 
     init(row: Row) throws {
-        id = row[CodingKeys.id]
-        conversationId = row[CodingKeys.conversationId]
-        role = MessageRole(rawValue: row[CodingKeys.role]) ?? .assistant
-        content = row[CodingKeys.content]
-        timestamp = row[CodingKeys.timestamp]
-        skillName = row[CodingKeys.skillName]
+        id = row["id"]
+        conversationId = row["conversation_id"]
+        role = MessageRole(rawValue: row["role"]) ?? .assistant
+        content = row["content"]
+        timestamp = row["timestamp"]
+        skillName = row["skill_name"]
 
-        if let jsonString: String = row[CodingKeys.attachments],
+        if let jsonString: String = row["attachments"],
            let data = jsonString.data(using: .utf8) {
             attachments = try? JSONDecoder().decode([Attachment].self, from: data)
         } else {
@@ -66,18 +66,18 @@ extension ChatMessage: FetchableRecord, PersistableRecord {
     }
 
     func encode(to container: inout PersistenceContainer) throws {
-        container[CodingKeys.id] = id
-        container[CodingKeys.conversationId] = conversationId
-        container[CodingKeys.role] = role.rawValue
-        container[CodingKeys.content] = content
-        container[CodingKeys.timestamp] = timestamp
-        container[CodingKeys.skillName] = skillName
+        container["id"] = id
+        container["conversation_id"] = conversationId
+        container["role"] = role.rawValue
+        container["content"] = content
+        container["timestamp"] = timestamp
+        container["skill_name"] = skillName
 
         if let attachments = attachments {
             let data = try JSONEncoder().encode(attachments)
-            container[CodingKeys.attachments] = String(data: data, encoding: .utf8)
+            container["attachments"] = String(data: data, encoding: .utf8)
         } else {
-            container[CodingKeys.attachments] = nil as String?
+            container["attachments"] = nil as String?
         }
     }
 }
