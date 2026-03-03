@@ -6,6 +6,10 @@ struct MessageBubbleView: View {
     let onCopy: () -> Void
     let onDelete: () -> Void
 
+    @State private var selectedImageURL: URL?
+
+    private let serverBaseURL = "http://43.155.104.45:3100"
+
     var body: some View {
         let isUser = message.role == .user
 
@@ -30,6 +34,35 @@ struct MessageBubbleView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 1)
+        .fullScreenCover(isPresented: Binding(
+            get: { selectedImageURL != nil },
+            set: { if !$0 { selectedImageURL = nil } }
+        )) {
+            if let url = selectedImageURL {
+                ImageViewerView(imageURL: url)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func attachmentViews(isUser: Bool) -> some View {
+        if let attachments = message.attachments, !attachments.isEmpty {
+            ForEach(attachments) { attachment in
+                if attachment.type == .image {
+                    let url = URL(string: "\(serverBaseURL)\(attachment.url)")
+                    AsyncImage(url: url) { image in
+                        image.resizable().aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        ProgressView()
+                    }
+                    .frame(maxWidth: 250)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .onTapGesture { selectedImageURL = url }
+                } else {
+                    FileCardView(attachment: attachment)
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -38,11 +71,14 @@ struct MessageBubbleView: View {
         let timeStr = Date.fromTimestamp(message.timestamp).chatTimeLabel()
 
         if isUser {
-            // User bubble - text + time inside
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(message.content)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.white)
+            // User bubble - attachments + text + time inside
+            VStack(alignment: .trailing, spacing: 4) {
+                attachmentViews(isUser: true)
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white)
+                }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
                     Text(timeStr)
@@ -69,11 +105,14 @@ struct MessageBubbleView: View {
             .background(AppTheme.error.opacity(0.1))
             .clipShape(BubbleShape(isUser: false))
         } else {
-            // Assistant bubble - markdown + time inside
-            VStack(alignment: .leading, spacing: 0) {
-                Markdown(message.content)
-                    .markdownTheme(MarkdownThemeProvider.agentOS)
-                    .textSelection(.enabled)
+            // Assistant bubble - attachments + markdown + time inside
+            VStack(alignment: .leading, spacing: 4) {
+                attachmentViews(isUser: false)
+                if !message.content.isEmpty {
+                    Markdown(message.content)
+                        .markdownTheme(MarkdownThemeProvider.agentOS)
+                        .textSelection(.enabled)
+                }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
                     Text(timeStr)

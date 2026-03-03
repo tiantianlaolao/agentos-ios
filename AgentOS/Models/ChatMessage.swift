@@ -8,6 +8,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     var content: String
     let timestamp: Int
     var skillName: String?
+    var attachments: [Attachment]?
 
     enum MessageRole: String, Codable, Sendable {
         case user
@@ -20,7 +21,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         role: MessageRole,
         content: String,
         timestamp: Int = Int(Date().timeIntervalSince1970 * 1000),
-        skillName: String? = nil
+        skillName: String? = nil,
+        attachments: [Attachment]? = nil
     ) {
         self.id = id
         self.conversationId = conversationId
@@ -28,12 +30,13 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.content = content
         self.timestamp = timestamp
         self.skillName = skillName
+        self.attachments = attachments
     }
 }
 
 // MARK: - GRDB
 
-extension ChatMessage: Codable, FetchableRecord, PersistableRecord {
+extension ChatMessage: FetchableRecord, PersistableRecord {
     static let databaseTableName = "messages"
 
     enum CodingKeys: String, CodingKey {
@@ -43,5 +46,38 @@ extension ChatMessage: Codable, FetchableRecord, PersistableRecord {
         case content
         case timestamp
         case skillName = "skill_name"
+        case attachments
+    }
+
+    init(row: Row) throws {
+        id = row[CodingKeys.id]
+        conversationId = row[CodingKeys.conversationId]
+        role = MessageRole(rawValue: row[CodingKeys.role]) ?? .assistant
+        content = row[CodingKeys.content]
+        timestamp = row[CodingKeys.timestamp]
+        skillName = row[CodingKeys.skillName]
+
+        if let jsonString: String = row[CodingKeys.attachments],
+           let data = jsonString.data(using: .utf8) {
+            attachments = try? JSONDecoder().decode([Attachment].self, from: data)
+        } else {
+            attachments = nil
+        }
+    }
+
+    func encode(to container: inout PersistenceContainer) throws {
+        container[CodingKeys.id] = id
+        container[CodingKeys.conversationId] = conversationId
+        container[CodingKeys.role] = role.rawValue
+        container[CodingKeys.content] = content
+        container[CodingKeys.timestamp] = timestamp
+        container[CodingKeys.skillName] = skillName
+
+        if let attachments = attachments {
+            let data = try JSONEncoder().encode(attachments)
+            container[CodingKeys.attachments] = String(data: data, encoding: .utf8)
+        } else {
+            container[CodingKeys.attachments] = nil as String?
+        }
     }
 }

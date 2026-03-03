@@ -456,9 +456,10 @@ final class ChatViewModel {
 
     // MARK: - Send Message
 
-    func sendMessage() async {
+    func sendMessage(attachments: [Attachment]? = nil) async {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isStreaming else { return }
+        let hasAttachments = attachments != nil && !(attachments!.isEmpty)
+        guard (!text.isEmpty || hasAttachments), !isStreaming else { return }
 
         guard var convId = currentConversationId else { return }
 
@@ -482,7 +483,8 @@ final class ChatViewModel {
             )
             var updated = conv
             if conv.title == "Chat" {
-                updated.title = String(text.prefix(30))
+                let titleText = text.isEmpty ? (attachments?.first?.name ?? "Attachment") : text
+                updated.title = String(titleText.prefix(30))
             }
             updated.updatedAt = Int(Date().timeIntervalSince1970 * 1000)
             try await DatabaseService.shared.saveConversation(updated)
@@ -492,7 +494,8 @@ final class ChatViewModel {
         let userMsg = ChatMessage(
             conversationId: convId,
             role: .user,
-            content: text
+            content: text,
+            attachments: hasAttachments ? attachments : nil
         )
         messages.append(userMsg)
         inputText = ""
@@ -515,7 +518,8 @@ final class ChatViewModel {
             wsService.sendChat(
                 conversationId: convId,
                 content: text,
-                history: history
+                history: history,
+                attachments: hasAttachments ? attachments : nil
             )
 
         case .byok:
@@ -528,7 +532,8 @@ final class ChatViewModel {
                 wsService.sendChat(
                     conversationId: convId,
                     content: text,
-                    history: history
+                    history: history,
+                    attachments: hasAttachments ? attachments : nil
                 )
             } else {
                 // Direct OpenClaw connection
@@ -542,7 +547,8 @@ final class ChatViewModel {
                 wsService.sendChat(
                     conversationId: convId,
                     content: text,
-                    history: history
+                    history: history,
+                    attachments: hasAttachments ? attachments : nil
                 )
             } else {
                 await sendOpenClaw(text: text, convId: convId)
@@ -739,7 +745,27 @@ final class ChatViewModel {
             if let payload = message.payload?.dictValue,
                let fullContent = payload["fullContent"] as? String,
                let convId = payload["conversationId"] as? String {
-                handleStreamDone(fullContent: fullContent, conversationId: convId)
+                var parsedAttachments: [Attachment]?
+                if let attArray = payload["attachments"] as? [[String: Any]] {
+                    parsedAttachments = attArray.compactMap { dict -> Attachment? in
+                        guard let id = dict["id"] as? String,
+                              let typeStr = dict["type"] as? String,
+                              let url = dict["url"] as? String,
+                              let name = dict["name"] as? String,
+                              let size = dict["size"] as? Int,
+                              let mimeType = dict["mimeType"] as? String else { return nil }
+                        return Attachment(
+                            id: id,
+                            type: Attachment.AttachmentType(rawValue: typeStr) ?? .file,
+                            url: url,
+                            name: name,
+                            size: size,
+                            mimeType: mimeType
+                        )
+                    }
+                    if parsedAttachments?.isEmpty == true { parsedAttachments = nil }
+                }
+                handleStreamDone(fullContent: fullContent, conversationId: convId, attachments: parsedAttachments)
             }
 
         case .skillStart:
@@ -818,14 +844,15 @@ final class ChatViewModel {
         }
     }
 
-    private func handleStreamDone(fullContent: String, conversationId: String) {
+    private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil) {
         guard let assistantId = currentAssistantId else { return }
 
         let msg = ChatMessage(
             id: assistantId,
             conversationId: conversationId,
             role: .assistant,
-            content: fullContent
+            content: fullContent,
+            attachments: attachments
         )
         messages.append(msg)
         Task {
@@ -884,7 +911,7 @@ final class ChatViewModel {
 
     private func buildHistory() -> [ChatHistoryItem] {
         let recent = messages.suffix(maxHistoryForLLM * 2)
-        return recent.map { ChatHistoryItem(role: $0.role.rawValue, content: $0.content) }
+        return recent.map { ChatHistoryItem(role: $0.role.rawValue, content: $0.content, attachments: $0.attachments) }
     }
 
     private func getOrCreateDeviceId() async -> String {

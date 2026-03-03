@@ -97,9 +97,22 @@ final class WebSocketService {
         }
     }
 
-    func sendChat(conversationId: String, content: String, history: [ChatHistoryItem]? = nil) {
-        let payload = ChatSendPayload(conversationId: conversationId, content: content, history: history)
-        let msg = WSMessage(type: .chatSend, payload: AnyCodable(encodeToDictionary(payload)))
+    func sendChat(conversationId: String, content: String, history: [ChatHistoryItem]? = nil, attachments: [Attachment]? = nil) {
+        var dict = encodeToDictionary(ChatSendPayload(conversationId: conversationId, content: content, history: history))
+        if let attachments = attachments, !attachments.isEmpty {
+            let attachmentDicts = attachments.map { att -> [String: Any] in
+                [
+                    "id": att.id,
+                    "type": att.type.rawValue,
+                    "url": att.url,
+                    "name": att.name,
+                    "size": att.size,
+                    "mimeType": att.mimeType
+                ]
+            }
+            dict["attachments"] = attachmentDicts
+        }
+        let msg = WSMessage(type: .chatSend, payload: AnyCodable(dict))
         send(msg)
     }
 

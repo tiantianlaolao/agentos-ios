@@ -57,6 +57,12 @@ actor DatabaseService {
             }
         }
 
+        migrator.registerMigration("v2_attachments") { db in
+            try db.alter(table: "messages") { t in
+                t.add(column: "attachments", .text)
+            }
+        }
+
         try migrator.migrate(dbQueue)
     }
 

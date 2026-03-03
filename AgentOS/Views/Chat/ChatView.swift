@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
@@ -6,6 +8,14 @@ struct ChatView: View {
     @FocusState private var inputFocused: Bool
     @State private var showSkillsPanel = false
     @State private var skillsViewModel = SkillsViewModel()
+
+    // Attachment state
+    @State private var pendingAttachments: [Attachment] = []
+    @State private var showAttachmentPicker = false
+    @State private var showPhotoPicker = false
+    @State private var showFilePicker = false
+    @State private var isUploading = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
         ZStack {
@@ -48,6 +58,26 @@ struct ChatView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
 
+                    // Attachment preview
+                    if !pendingAttachments.isEmpty {
+                        AttachmentPreviewView(attachments: pendingAttachments) { index in
+                            pendingAttachments.remove(at: index)
+                        }
+                    }
+
+                    // Upload indicator
+                    if isUploading {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .tint(AppTheme.primary)
+                                .controlSize(.small)
+                            Text("Uploading...")
+                                .font(.system(size: 12))
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
                     // Input bar
                     inputBar
                 }
@@ -64,6 +94,64 @@ struct ChatView: View {
                 mode: viewModel.connectionMode,
                 onClose: { showSkillsPanel = false }
             )
+        }
+        .confirmationDialog("Add Attachment", isPresented: $showAttachmentPicker) {
+            Button("Photo Library") { showPhotoPicker = true }
+            Button("File") { showFilePicker = true }
+            Button("Cancel", role: .cancel) { }
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let item = newItem else { return }
+            Task {
+                guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+                isUploading = true
+                defer { isUploading = false; selectedPhotoItem = nil }
+                let deviceId = try? await DatabaseService.shared.getSetting(key: "deviceId")
+                do {
+                    let attachment = try await UploadService.shared.upload(
+                        data: data,
+                        fileName: "photo_\(Int(Date().timeIntervalSince1970)).jpg",
+                        mimeType: "image/jpeg",
+                        deviceId: deviceId
+                    )
+                    await MainActor.run { pendingAttachments.append(attachment) }
+                } catch {
+                    print("Upload failed: \(error)")
+                }
+            }
+        }
+        .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.pdf, .plainText, .commaSeparatedText, .image]) { result in
+            guard case .success(let url) = result else { return }
+            guard url.startAccessingSecurityScopedResource() else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+            Task {
+                guard let data = try? Data(contentsOf: url) else { return }
+                isUploading = true
+                defer { isUploading = false }
+                let ext = url.pathExtension.lowercased()
+                let mimeType: String
+                switch ext {
+                case "pdf": mimeType = "application/pdf"
+                case "jpg", "jpeg": mimeType = "image/jpeg"
+                case "png": mimeType = "image/png"
+                case "gif": mimeType = "image/gif"
+                case "csv": mimeType = "text/csv"
+                default: mimeType = "text/plain"
+                }
+                let deviceId = try? await DatabaseService.shared.getSetting(key: "deviceId")
+                do {
+                    let attachment = try await UploadService.shared.upload(
+                        data: data,
+                        fileName: url.lastPathComponent,
+                        mimeType: mimeType,
+                        deviceId: deviceId
+                    )
+                    await MainActor.run { pendingAttachments.append(attachment) }
+                } catch {
+                    print("Upload failed: \(error)")
+                }
+            }
         }
     }
 
@@ -222,6 +310,14 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 8) {
+            // Attachment button
+            Button(action: { showAttachmentPicker = true }) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundColor(AppTheme.primary)
+            }
+            .disabled(viewModel.isStreaming)
+
             // Text field
             TextField(L10n.tr("chat.inputPlaceholder"), text: $viewModel.inputText, axis: .vertical)
                 .font(.system(size: 16))
@@ -233,7 +329,7 @@ struct ChatView: View {
                 .lineLimit(1...5)
                 .focused($inputFocused)
                 .onSubmit {
-                    Task { await viewModel.sendMessage() }
+                    sendWithAttachments()
                 }
 
             // Send / Stop button
@@ -241,18 +337,17 @@ struct ChatView: View {
                 if viewModel.isStreaming {
                     viewModel.stopGeneration()
                 } else {
-                    Task { await viewModel.sendMessage() }
+                    sendWithAttachments()
                 }
             } label: {
                 Image(systemName: viewModel.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
                     .font(.system(size: 32))
                     .foregroundStyle(
                         viewModel.isStreaming ? AppTheme.error :
-                            (viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                             ? AppTheme.textTertiary : AppTheme.primary)
+                            (canSend ? AppTheme.primary : AppTheme.textTertiary)
                     )
             }
-            .disabled(!viewModel.isStreaming && viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!viewModel.isStreaming && !canSend)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -260,6 +355,16 @@ struct ChatView: View {
     }
 
     // MARK: - Helpers
+
+    private var canSend: Bool {
+        !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pendingAttachments.isEmpty
+    }
+
+    private func sendWithAttachments() {
+        let atts = pendingAttachments.isEmpty ? nil : pendingAttachments
+        pendingAttachments = []
+        Task { await viewModel.sendMessage(attachments: atts) }
+    }
 
     private func shouldShowDateSeparator(at index: Int) -> Bool {
         guard index > 0 else { return true }

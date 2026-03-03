@@ -120,6 +120,7 @@ struct ChatSendPayload: Codable, Sendable {
     let conversationId: String
     let content: String
     var history: [ChatHistoryItem]?
+    var attachments: [Attachment]?
 }
 
 struct ChatStopPayload: Codable, Sendable {
@@ -136,6 +137,7 @@ struct ChatDonePayload: Codable, Sendable {
     let fullContent: String
     var usage: TokenUsage?
     var skillsInvoked: [SkillInvocation]?
+    var attachments: [Attachment]?
 }
 
 struct SkillStartPayload: Codable, Sendable {
@@ -204,11 +206,28 @@ struct SkillConfigField: Codable, Sendable, Identifiable {
     var id: String { key }
 }
 
+// MARK: - Attachment
+
+struct Attachment: Codable, Sendable, Equatable, Identifiable {
+    let id: String
+    let type: AttachmentType
+    let url: String
+    let name: String
+    let size: Int
+    let mimeType: String
+
+    enum AttachmentType: String, Codable, Sendable {
+        case image
+        case file
+    }
+}
+
 // MARK: - Supporting Types
 
 struct ChatHistoryItem: Codable, Sendable {
     let role: String
     let content: String
+    var attachments: [Attachment]?
 }
 
 struct TokenUsage: Codable, Sendable {
