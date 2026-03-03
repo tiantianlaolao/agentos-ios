@@ -108,11 +108,13 @@ struct ChatView: View {
                 isUploading = true
                 defer { isUploading = false; selectedPhotoItem = nil }
                 let deviceId = try? await DatabaseService.shared.getSetting(key: "deviceId")
+                let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
                 do {
                     let attachment = try await UploadService.shared.upload(
                         data: data,
                         fileName: "photo_\(Int(Date().timeIntervalSince1970)).jpg",
                         mimeType: "image/jpeg",
+                        authToken: authToken,
                         deviceId: deviceId
                     )
                     await MainActor.run { pendingAttachments.append(attachment) }
@@ -124,12 +126,17 @@ struct ChatView: View {
         .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.pdf, .plainText, .commaSeparatedText, .image, .html, .json, .xml, .zip, .spreadsheet, .presentation, .data]) { result in
             guard case .success(let url) = result else { return }
             guard url.startAccessingSecurityScopedResource() else { return }
-            defer { url.stopAccessingSecurityScopedResource() }
+            // Read data synchronously while security-scoped access is active
+            guard let data = try? Data(contentsOf: url) else {
+                url.stopAccessingSecurityScopedResource()
+                return
+            }
+            let fileName = url.lastPathComponent
+            let ext = url.pathExtension.lowercased()
+            url.stopAccessingSecurityScopedResource()
             Task {
-                guard let data = try? Data(contentsOf: url) else { return }
                 isUploading = true
                 defer { isUploading = false }
-                let ext = url.pathExtension.lowercased()
                 let mimeType: String
                 switch ext {
                 case "pdf": mimeType = "application/pdf"
@@ -150,11 +157,13 @@ struct ChatView: View {
                 default: mimeType = "application/octet-stream"
                 }
                 let deviceId = try? await DatabaseService.shared.getSetting(key: "deviceId")
+                let authToken = try? await DatabaseService.shared.getSetting(key: "auth_token")
                 do {
                     let attachment = try await UploadService.shared.upload(
                         data: data,
-                        fileName: url.lastPathComponent,
+                        fileName: fileName,
                         mimeType: mimeType,
+                        authToken: authToken,
                         deviceId: deviceId
                     )
                     await MainActor.run { pendingAttachments.append(attachment) }
