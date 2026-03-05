@@ -121,6 +121,8 @@ struct ChatSendPayload: Codable, Sendable {
     let content: String
     var history: [ChatHistoryItem]?
     var attachments: [Attachment]?
+    var model: String?
+    var compareMode: Bool?
 }
 
 struct ChatStopPayload: Codable, Sendable {

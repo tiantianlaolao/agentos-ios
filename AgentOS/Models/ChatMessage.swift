@@ -9,6 +9,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     let timestamp: Int
     var skillName: String?
     var attachments: [Attachment]?
+    var compareModel: String?
 
     enum MessageRole: String, Codable, Sendable {
         case user
@@ -22,7 +23,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         content: String,
         timestamp: Int = Int(Date().timeIntervalSince1970 * 1000),
         skillName: String? = nil,
-        attachments: [Attachment]? = nil
+        attachments: [Attachment]? = nil,
+        compareModel: String? = nil
     ) {
         self.id = id
         self.conversationId = conversationId
@@ -31,6 +33,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.timestamp = timestamp
         self.skillName = skillName
         self.attachments = attachments
+        self.compareModel = compareModel
     }
 }
 

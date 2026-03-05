@@ -5,6 +5,7 @@ struct MessageBubbleView: View {
     let message: ChatMessage
     let onCopy: () -> Void
     let onDelete: () -> Void
+    var onCompare: ((String) -> Void)?
 
     @State private var selectedImageURL: URL?
 
@@ -22,6 +23,13 @@ struct MessageBubbleView: View {
                         onCopy()
                     } label: {
                         Label(L10n.tr("chat.copy"), systemImage: "doc.on.doc")
+                    }
+                    if !isUser && message.compareModel == nil && !message.content.hasPrefix("[Error]") && onCompare != nil {
+                        Button {
+                            onCompare?(message.content)
+                        } label: {
+                            Label(L10n.tr("chat.compare"), systemImage: "arrow.triangle.2.circlepath")
+                        }
                     }
                     Button(role: .destructive) {
                         onDelete()
@@ -107,6 +115,19 @@ struct MessageBubbleView: View {
         } else {
             // Assistant bubble - attachments + markdown + time inside
             VStack(alignment: .leading, spacing: 4) {
+                if let modelName = message.compareModel {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 10))
+                        Text(modelName)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(AppTheme.accent.opacity(0.12))
+                    .clipShape(Capsule())
+                }
                 attachmentViews(isUser: false)
                 if !message.content.isEmpty {
                     Markdown(message.content)

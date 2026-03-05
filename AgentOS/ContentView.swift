@@ -39,13 +39,19 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
+            SkillStoreView()
+                .tabItem {
+                    Label(L10n.tr("tabs.skills"), systemImage: "square.grid.2x2")
+                }
+                .tag(1)
+
             NavigationStack {
                 MemoryView()
             }
             .tabItem {
                 Label(L10n.tr("tabs.memory"), systemImage: "lightbulb")
             }
-            .tag(1)
+            .tag(2)
 
             NavigationStack {
                 SettingsView(authViewModel: authViewModel)
@@ -53,7 +59,7 @@ struct MainTabView: View {
             .tabItem {
                 Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
             }
-            .tag(2)
+            .tag(3)
         }
         .tint(AppTheme.primary)
     }

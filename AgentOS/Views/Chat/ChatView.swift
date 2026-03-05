@@ -95,6 +95,19 @@ struct ChatView: View {
                 onClose: { showSkillsPanel = false }
             )
         }
+        .sheet(isPresented: $viewModel.showCompareSheet) {
+            CompareModelSheet(
+                onSelect: { modelId, modelName in
+                    viewModel.compareWithModel(
+                        originalContent: viewModel.compareOriginalContent,
+                        model: modelId,
+                        modelName: modelName
+                    )
+                },
+                onDismiss: { viewModel.showCompareSheet = false }
+            )
+            .presentationDetents([.medium, .large])
+        }
         .confirmationDialog("Add Attachment", isPresented: $showAttachmentPicker) {
             Button("Photo Library") { showPhotoPicker = true }
             Button("File") { showFilePicker = true }
@@ -295,7 +308,11 @@ struct ChatView: View {
                         MessageBubbleView(
                             message: message,
                             onCopy: { viewModel.copyMessage(message) },
-                            onDelete: { Task { await viewModel.deleteMessage(id: message.id) } }
+                            onDelete: { Task { await viewModel.deleteMessage(id: message.id) } },
+                            onCompare: viewModel.connectionMode == .builtin ? { content in
+                                viewModel.compareOriginalContent = content
+                                viewModel.showCompareSheet = true
+                            } : nil
                         )
                     }
 

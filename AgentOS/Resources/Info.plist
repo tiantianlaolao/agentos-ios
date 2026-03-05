@@ -33,5 +33,7 @@
 	<string>AppIcon</string>
 	<key>UIBackgroundModes</key>
 	<array/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>AgentOS needs access to save images to your photo library.</string>
 </dict>
 </plist>

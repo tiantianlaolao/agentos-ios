@@ -59,6 +59,7 @@ final class L10n {
     private static let zh: [String: String] = [
         // tabs
         "tabs.chat": "助理",
+        "tabs.skills": "技能",
         "tabs.memory": "记忆",
         "tabs.settings": "设置",
 
@@ -113,6 +114,11 @@ final class L10n {
         "chat.loadMore": "上滑加载更多",
         "chat.clearChat": "清空对话",
         "chat.disconnected": "连接已断开，点击重连",
+        "chat.compare": "换个模型",
+        "chat.compareWith": "用 {{model}} 回答",
+        "chat.compareLabel": "对比回复",
+        "chat.compareLimitReached": "今日对比次数已用完",
+        "chat.selectModel": "选择模型",
 
         // login
         "login.title": "欢迎使用 AgentOS",
@@ -382,6 +388,11 @@ final class L10n {
         "skills.args": "参数",
         "skills.commaSeparated": "逗号分隔的参数列表",
         "skills.system": "系统",
+        "skills.store": "技能商店",
+        "skills.mcpBanner": "MCP 生态: 5800+ 工具可用",
+        "skills.mcpLearnMore": "了解更多",
+        "skills.installCount": "{{count}} 次安装",
+        "skills.noResults": "没有找到匹配的技能",
 
         // skillDetail
         "skillDetail.title": "技能详情",
@@ -446,6 +457,7 @@ final class L10n {
     private static let en: [String: String] = [
         // tabs
         "tabs.chat": "Assistant",
+        "tabs.skills": "Skills",
         "tabs.memory": "Memory",
         "tabs.settings": "Settings",
 
@@ -500,6 +512,11 @@ final class L10n {
         "chat.loadMore": "Scroll up to load more",
         "chat.clearChat": "Clear Chat",
         "chat.disconnected": "Disconnected. Tap to reconnect.",
+        "chat.compare": "Compare",
+        "chat.compareWith": "Answer with {{model}}",
+        "chat.compareLabel": "Compare reply",
+        "chat.compareLimitReached": "Daily compare limit reached",
+        "chat.selectModel": "Select model",
 
         // login
         "login.title": "Welcome to AgentOS",
@@ -769,6 +786,11 @@ final class L10n {
         "skills.args": "Args",
         "skills.commaSeparated": "Comma-separated list of arguments",
         "skills.system": "System",
+        "skills.store": "Skill Store",
+        "skills.mcpBanner": "MCP Ecosystem: 5800+ tools available",
+        "skills.mcpLearnMore": "Learn more",
+        "skills.installCount": "{{count}} installs",
+        "skills.noResults": "No matching skills found",
 
         // skillDetail
         "skillDetail.title": "Skill Details",

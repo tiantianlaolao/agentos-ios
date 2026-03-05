@@ -37,8 +37,10 @@ final class ChatViewModel {
     var selectedModel: String = ""
     var inputText = ""
     var activeSkill: SkillExecution?
-    var showAgentHub = true
+    var showAgentHub = false
     var errorMessage: String?
+    var showCompareSheet = false
+    var compareOriginalContent = ""
 
     // Pagination
     var hasMore = true
@@ -628,6 +630,50 @@ final class ChatViewModel {
         #endif
     }
 
+    // MARK: - Compare with Model
+
+    func compareWithModel(originalContent: String, model: String, modelName: String) {
+        guard !isStreaming, let convId = currentConversationId else { return }
+
+        // Find the user message that preceded the assistant reply being compared
+        // We search backwards for the last user message before the compare target
+        let userContent: String = {
+            // Find original assistant message, then look for user message before it
+            if let idx = messages.lastIndex(where: { $0.content == originalContent && $0.role == .assistant }) {
+                let preceding = messages[..<idx]
+                if let userMsg = preceding.last(where: { $0.role == .user }) {
+                    return userMsg.content
+                }
+            }
+            return originalContent
+        }()
+
+        // Init streaming state
+        let assistantId = UUID().uuidString
+        currentAssistantId = assistantId
+        streamBuffer = ""
+        isStreaming = true
+        streamingContent = nil
+
+        // Build history (same as regular send)
+        let history = buildHistory()
+
+        // Send via WebSocket with model and compareMode
+        startStreamTimeout()
+        wsService.sendChat(
+            conversationId: convId,
+            content: userContent,
+            history: history,
+            model: model,
+            compareMode: true
+        )
+
+        // Store compareModel so we can tag the resulting message
+        self._pendingCompareModel = modelName
+    }
+
+    private var _pendingCompareModel: String?
+
     // MARK: - BYOK Direct Streaming
 
     private func sendBYOK(text: String, convId: String, history: [ChatHistoryItem]) async {
@@ -847,12 +893,16 @@ final class ChatViewModel {
     private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil) {
         guard let assistantId = currentAssistantId else { return }
 
+        let compareModel = _pendingCompareModel
+        _pendingCompareModel = nil
+
         let msg = ChatMessage(
             id: assistantId,
             conversationId: conversationId,
             role: .assistant,
             content: fullContent,
-            attachments: attachments
+            attachments: attachments,
+            compareModel: compareModel
         )
         messages.append(msg)
         Task {
@@ -888,6 +938,7 @@ final class ChatViewModel {
         streamBuffer = ""
         currentAssistantId = nil
         activeSkill = nil
+        _pendingCompareModel = nil
         byokStreamTask?.cancel()
         byokStreamTask = nil
     }
