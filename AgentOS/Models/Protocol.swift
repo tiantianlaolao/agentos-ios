@@ -174,6 +174,7 @@ struct SkillTogglePayload: Codable, Sendable {
 
 struct SkillInstallPayload: Codable, Sendable {
     let skillName: String
+    var agentType: String?
 }
 
 struct SkillLibraryRequestPayload: Codable, Sendable {

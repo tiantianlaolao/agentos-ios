@@ -3,6 +3,14 @@ import SwiftUI
 struct SkillStoreView: View {
     @State private var viewModel = SkillStoreViewModel()
     @State private var chatViewModel: ChatViewModel?
+    @State private var showAddSkillSheet = false
+    @State private var addSkillMode: AddSkillMode?
+    @State private var installAgentSheet: SkillLibraryItem?
+
+    private enum AddSkillMode: String, Identifiable {
+        case http, mcp, skillmd, generate
+        var id: String { rawValue }
+    }
 
     var body: some View {
         NavigationStack {
@@ -30,13 +38,91 @@ struct SkillStoreView: View {
                     }
                     .padding(.vertical, 8)
                 }
+
+                // Floating add skill button
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            showAddSkillSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 56, height: 56)
+                                .background(AppTheme.primary)
+                                .clipShape(Circle())
+                                .shadow(color: AppTheme.primary.opacity(0.3), radius: 8, y: 4)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
+                    }
+                }
             }
             .navigationTitle(L10n.tr("skills.store"))
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(L10n.tr("skills.selectAgent"), isPresented: Binding(
+                get: { installAgentSheet != nil },
+                set: { if !$0 { installAgentSheet = nil } }
+            )) {
+                if let skill = installAgentSheet {
+                    let agents = skill.compatibleAgents ?? ["builtin"]
+                    ForEach(agents, id: \.self) { agent in
+                        Button(agentLabel(agent)) {
+                            viewModel.installSkill(name: skill.name, agentType: agent)
+                            installAgentSheet = nil
+                        }
+                    }
+                    Button(L10n.tr("skills.cancel"), role: .cancel) {
+                        installAgentSheet = nil
+                    }
+                }
+            }
+            .confirmationDialog(L10n.tr("skills.addSkillTitle"), isPresented: $showAddSkillSheet) {
+                Button(L10n.tr("skills.registerHttpSkill")) { addSkillMode = .http }
+                Button(L10n.tr("skills.mcpServers")) { addSkillMode = .mcp }
+                Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
+                Button(L10n.tr("skills.aiGenerate")) { addSkillMode = .generate }
+                Button(L10n.tr("skills.cancel"), role: .cancel) {}
+            }
+            .sheet(item: $addSkillMode) { mode in
+                switch mode {
+                case .http:
+                    RegisterSkillView(serverUrl: "", authToken: "", onRegistered: { viewModel.fetchLibrary() })
+                case .mcp:
+                    AddMcpServerView(serverUrl: "", authToken: "", onAdded: { viewModel.fetchLibrary() })
+                case .skillmd:
+                    ImportSkillMdView(serverUrl: "", authToken: "", onImported: { viewModel.fetchLibrary() })
+                case .generate:
+                    GenerateSkillView(serverUrl: "", authToken: "", onGenerated: { viewModel.fetchLibrary() })
+                }
+            }
         }
         .task {
+            // Load server URL and token from settings
+            let url = (try? await DatabaseService.shared.getSetting(key: "serverUrl")) ?? "http://43.155.104.45:3100"
+            let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""
+            viewModel.setup(wsService: WebSocketService.shared, serverUrl: url, authToken: token)
             await viewModel.fetchFeatured()
             await viewModel.fetchStats()
+        }
+    }
+
+    private func agentLabel(_ agent: String) -> String {
+        switch agent {
+        case "builtin": return L10n.tr("skills.builtinAgent")
+        case "openclaw": return L10n.tr("skills.openclawAgent")
+        default: return agent
+        }
+    }
+
+    private func handleInstall(_ skill: SkillLibraryItem) {
+        let agents = skill.compatibleAgents ?? []
+        if agents.count <= 1 {
+            viewModel.installSkill(name: skill.name, agentType: agents.first)
+        } else {
+            installAgentSheet = skill
         }
     }
 
@@ -188,52 +274,124 @@ struct SkillStoreView: View {
     }
 
     private func skillRow(_ skill: SkillLibraryItem) -> some View {
-        HStack(spacing: 12) {
-            Text(skill.emoji ?? "")
-                .font(.system(size: 28))
-                .frame(width: 40, height: 40)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Text(skill.emoji ?? "")
+                    .font(.system(size: 28))
+                    .frame(width: 40, height: 40)
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(skill.name)
-                        .font(AppTheme.bodyFont.weight(.medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .lineLimit(1)
-                    auditBadge(skill.audit)
-                }
-                Text(skill.description)
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .lineLimit(2)
-                HStack(spacing: 8) {
-                    if skill.installCount > 0 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 10))
-                            Text(L10n.tr("skills.installCount", ["count": "\(skill.installCount)"]))
-                                .font(AppTheme.smallFont)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(skill.name)
+                            .font(AppTheme.bodyFont.weight(.medium))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(1)
+                        auditBadge(skill.audit)
+                        if let skillType = skill.skillType {
+                            Text(skillType == "system" ? L10n.tr("skills.systemSkill") : L10n.tr("skills.knowledgeSkill"))
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(skillType == "system" ? AppTheme.primary : AppTheme.warning)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background((skillType == "system" ? AppTheme.primary : AppTheme.warning).opacity(0.15))
+                                .clipShape(Capsule())
                         }
-                        .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    Text(skill.description)
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(2)
+                    HStack(spacing: 8) {
+                        if skill.installCount > 0 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 10))
+                                Text(L10n.tr("skills.installCount", ["count": "\(skill.installCount)"]))
+                                    .font(AppTheme.smallFont)
+                            }
+                            .foregroundStyle(AppTheme.textTertiary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(spacing: 4) {
+                    if skill.visibility == "private" {
+                        Button {
+                            // Apply publish action placeholder
+                        } label: {
+                            Text(L10n.tr("skills.applyPublish"))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(AppTheme.warning)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .overlay(
+                                    Capsule().stroke(AppTheme.warning, lineWidth: 1)
+                                )
+                        }
+                    }
+                    if skill.installed {
+                        Text(L10n.tr("skills.installedBadge"))
+                            .font(AppTheme.smallFont.weight(.semibold))
+                            .foregroundStyle(AppTheme.success)
+                    } else {
+                        Button {
+                            handleInstall(skill)
+                        } label: {
+                            Text(L10n.tr("skills.install"))
+                                .font(AppTheme.captionFont.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(AppTheme.primary)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if skill.installed {
-                Text(L10n.tr("skills.installedBadge"))
-                    .font(AppTheme.smallFont.weight(.semibold))
-                    .foregroundStyle(AppTheme.success)
-            } else {
-                Button {
-                    viewModel.installSkill(name: skill.name)
-                } label: {
-                    Text(L10n.tr("skills.install"))
-                        .font(AppTheme.captionFont.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(AppTheme.primary)
-                        .clipShape(Capsule())
+            // Compatible agents row
+            if let agents = skill.compatibleAgents, !agents.isEmpty {
+                HStack(spacing: 4) {
+                    Text(L10n.tr("skills.compatibleWith") + ":")
+                        .font(AppTheme.smallFont)
+                        .foregroundStyle(AppTheme.textTertiary)
+                    ForEach(agents, id: \.self) { agent in
+                        Text(agentLabel(agent))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.surfaceLight)
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.leading, 52)
+            }
+
+            // Installed agents row
+            if let installedAgents = skill.installedAgents {
+                let activeAgents = installedAgents.filter { $0.value }.map(\.key)
+                if !activeAgents.isEmpty {
+                    HStack(spacing: 4) {
+                        Text(L10n.tr("skills.installedFor") + ":")
+                            .font(AppTheme.smallFont)
+                            .foregroundStyle(AppTheme.textTertiary)
+                        ForEach(activeAgents, id: \.self) { agent in
+                            HStack(spacing: 2) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 8))
+                                Text(agentLabel(agent))
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundStyle(AppTheme.success)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.success.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.leading, 52)
                 }
             }
         }

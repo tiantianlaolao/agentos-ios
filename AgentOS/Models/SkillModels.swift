@@ -51,6 +51,9 @@ struct SkillLibraryItem: Codable, Sendable, Identifiable, Equatable {
     var featured: Bool
     var functions: [SkillFunction]
     var locales: [String: SkillLocale]?
+    var skillType: String?
+    var compatibleAgents: [String]?
+    var installedAgents: [String: Bool]?
 
     var id: String { name }
 

@@ -15,25 +15,13 @@ struct SkillsPanelView: View {
                 AppTheme.background.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Tab selector (only show if mode has library)
-                    if viewModel.hasLibrary {
-                        tabSelector
-                    }
+                    // Tab bar removed — SkillsPanel is now read-only installed view
 
                     // Search bar
                     searchBar
 
-                    // Category filter (library tab only)
-                    if viewModel.activeTab == .library && viewModel.hasLibrary {
-                        categoryChips
-                    }
-
-                    // Content
-                    if viewModel.activeTab == .installed || !viewModel.hasLibrary {
-                        installedList
-                    } else {
-                        libraryContent
-                    }
+                    // Content — installed skills only
+                    installedList
                 }
             }
             .navigationTitle(L10n.tr("skills.title"))
@@ -51,48 +39,9 @@ struct SkillsPanelView: View {
                         Image(systemName: "arrow.clockwise")
                             .foregroundStyle(AppTheme.primary)
                     }
-                    // Add skill menu (only for modes with library)
-                    if viewModel.hasLibrary {
-                        addSkillMenu
-                    }
                 }
             }
-            .sheet(item: $viewModel.selectedLibrarySkill) { skill in
-                SkillDetailView(
-                    skill: skill,
-                    viewModel: viewModel,
-                    onInstall: { viewModel.installSkill(name: skill.name) },
-                    onUninstall: { viewModel.uninstallSkill(name: skill.name) }
-                )
-            }
-            .sheet(item: $viewModel.addSkillMode) { mode in
-                switch mode {
-                case .http:
-                    RegisterSkillView(
-                        serverUrl: serverUrl,
-                        authToken: authToken,
-                        onRegistered: { viewModel.requestSkillList(); viewModel.requestLibrary() }
-                    )
-                case .mcp:
-                    AddMcpServerView(
-                        serverUrl: serverUrl,
-                        authToken: authToken,
-                        onAdded: { viewModel.requestSkillList() }
-                    )
-                case .skillmd:
-                    ImportSkillMdView(
-                        serverUrl: serverUrl,
-                        authToken: authToken,
-                        onImported: { viewModel.requestSkillList(); viewModel.requestLibrary() }
-                    )
-                case .generate:
-                    GenerateSkillView(
-                        serverUrl: serverUrl,
-                        authToken: authToken,
-                        onGenerated: { viewModel.requestSkillList(); viewModel.requestLibrary() }
-                    )
-                }
-            }
+            /* Library detail sheet and add skill modals removed — management moved to Skill Store */
         }
         .task {
             authToken = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""

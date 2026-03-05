@@ -188,16 +188,21 @@ final class SkillsViewModel {
         }
     }
 
-    func installSkill(name: String) {
+    func installSkill(name: String, agentType: String? = nil) {
         guard let ws = wsService, ws.isConnected else { return }
-        let payload = SkillInstallPayload(skillName: name)
-        let dict = encodeToDictionary(payload)
+        var dict: [String: Any] = ["skillName": name]
+        if let agentType { dict["agentType"] = agentType }
         let msg = WSMessage(type: .skillInstall, payload: AnyCodable(dict))
         ws.send(msg)
 
         // Optimistic update
         if let idx = librarySkills.firstIndex(where: { $0.name == name }) {
             librarySkills[idx].installed = true
+            if let agentType {
+                var agents = librarySkills[idx].installedAgents ?? [:]
+                agents[agentType] = true
+                librarySkills[idx].installedAgents = agents
+            }
         }
 
         // Refresh lists after a delay
@@ -208,9 +213,10 @@ final class SkillsViewModel {
         }
     }
 
-    func uninstallSkill(name: String) {
+    func uninstallSkill(name: String, agentType: String? = nil) {
         guard let ws = wsService, ws.isConnected else { return }
-        let payload: [String: Any] = ["skillName": name]
+        var payload: [String: Any] = ["skillName": name]
+        if let agentType { payload["agentType"] = agentType }
         let msg = WSMessage(type: .skillUninstall, payload: AnyCodable(payload))
         ws.send(msg)
 

@@ -28,11 +28,18 @@ final class SkillStoreViewModel {
     var isLoading = false
     var stats: SkillStoreStats?
 
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String = ""
+    private var authToken: String = ""
     private weak var wsService: WebSocketService?
 
-    func setup(wsService: WebSocketService) {
+    func setup(wsService: WebSocketService, serverUrl: String? = nil, authToken: String? = nil) {
         self.wsService = wsService
+        if let url = serverUrl, !url.isEmpty {
+            self.serverBaseURL = url
+        }
+        if let token = authToken {
+            self.authToken = token
+        }
         wsService.onMessage { [weak self] message in
             Task { @MainActor in
                 self?.handleMessage(message)
@@ -54,10 +61,18 @@ final class SkillStoreViewModel {
         }
     }
 
+    private func authorizedRequest(url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        if !authToken.isEmpty {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
+
     func fetchFeatured() async {
-        guard let url = URL(string: "\(serverBaseURL)/api/skill-store/featured") else { return }
+        guard !serverBaseURL.isEmpty, let url = URL(string: "\(serverBaseURL)/api/skill-store/featured") else { return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await URLSession.shared.data(for: authorizedRequest(url: url))
             featured = try JSONDecoder().decode([FeaturedSkill].self, from: data)
         } catch {
             print("[SkillStore] Failed to fetch featured: \(error)")
@@ -65,9 +80,9 @@ final class SkillStoreViewModel {
     }
 
     func fetchStats() async {
-        guard let url = URL(string: "\(serverBaseURL)/api/skill-store/stats") else { return }
+        guard !serverBaseURL.isEmpty, let url = URL(string: "\(serverBaseURL)/api/skill-store/stats") else { return }
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, _) = try await URLSession.shared.data(for: authorizedRequest(url: url))
             let decoded = try JSONDecoder().decode(SkillStoreStats.self, from: data)
             stats = decoded
             categories = decoded.categories
@@ -83,21 +98,28 @@ final class SkillStoreViewModel {
         ws.send(msg)
     }
 
-    func installSkill(name: String) {
+    func installSkill(name: String, agentType: String? = nil) {
         guard let ws = wsService, ws.isConnected else { return }
-        let payload: [String: Any] = ["skillName": name]
+        var payload: [String: Any] = ["skillName": name]
+        if let agentType { payload["agentType"] = agentType }
         let msg = WSMessage(type: .skillInstall, payload: AnyCodable(payload))
         ws.send(msg)
 
         // Optimistic update
         if let idx = allSkills.firstIndex(where: { $0.name == name }) {
             allSkills[idx].installed = true
+            if let agentType {
+                var agents = allSkills[idx].installedAgents ?? [:]
+                agents[agentType] = true
+                allSkills[idx].installedAgents = agents
+            }
         }
     }
 
-    func uninstallSkill(name: String) {
+    func uninstallSkill(name: String, agentType: String? = nil) {
         guard let ws = wsService, ws.isConnected else { return }
-        let payload: [String: Any] = ["skillName": name]
+        var payload: [String: Any] = ["skillName": name]
+        if let agentType { payload["agentType"] = agentType }
         let msg = WSMessage(type: .skillUninstall, payload: AnyCodable(payload))
         ws.send(msg)
 

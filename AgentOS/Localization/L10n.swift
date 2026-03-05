@@ -393,6 +393,16 @@ final class L10n {
         "skills.mcpLearnMore": "了解更多",
         "skills.installCount": "{{count}} 次安装",
         "skills.noResults": "没有找到匹配的技能",
+        "skills.selectAgent": "选择助理",
+        "skills.compatibleWith": "兼容",
+        "skills.incompatible": "不兼容",
+        "skills.installedFor": "已安装给",
+        "skills.applyPublish": "申请公开",
+        "skills.systemSkill": "系统技能",
+        "skills.knowledgeSkill": "知识技能",
+        "skills.builtinAgent": "内置助理",
+        "skills.openclawAgent": "OpenClaw",
+        "skills.addSkill": "添加技能",
 
         // skillDetail
         "skillDetail.title": "技能详情",
@@ -791,6 +801,16 @@ final class L10n {
         "skills.mcpLearnMore": "Learn more",
         "skills.installCount": "{{count}} installs",
         "skills.noResults": "No matching skills found",
+        "skills.selectAgent": "Select Agent",
+        "skills.compatibleWith": "Compatible",
+        "skills.incompatible": "Incompatible",
+        "skills.installedFor": "Installed for",
+        "skills.applyPublish": "Apply to Publish",
+        "skills.systemSkill": "System Skill",
+        "skills.knowledgeSkill": "Knowledge Skill",
+        "skills.builtinAgent": "Built-in Agent",
+        "skills.openclawAgent": "OpenClaw",
+        "skills.addSkill": "Add Skill",
 
         // skillDetail
         "skillDetail.title": "Skill Details",
