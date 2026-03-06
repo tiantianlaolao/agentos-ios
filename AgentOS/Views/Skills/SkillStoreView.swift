@@ -9,6 +9,7 @@ struct SkillStoreView: View {
     @State private var addSkillMode: AddSkillMode?
     @State private var addSkillAgentType: String = "builtin"
     @State private var installAgentSheet: SkillLibraryItem?
+    @State private var showDesktopRequiredAlert = false
 
     private enum AddSkillMode: String, Identifiable {
         case http, mcp, skillmd, generate
@@ -79,8 +80,8 @@ struct SkillStoreView: View {
                     }
                     if agents.contains("openclaw") {
                         Button(L10n.tr("skills.forOpenclawAgent")) {
-                            viewModel.installSkill(name: skill.name, agentType: "openclaw")
                             installAgentSheet = nil
+                            showDesktopRequiredAlert = true
                         }
                     }
                     Button(L10n.tr("skills.cancel"), role: .cancel) {
@@ -95,8 +96,7 @@ struct SkillStoreView: View {
                     showAddBuiltinMethods = true
                 }
                 Button(L10n.tr("skills.openclawAgent")) {
-                    addSkillAgentType = "openclaw"
-                    showAddOpenclawMethods = true
+                    showDesktopRequiredAlert = true
                 }
                 Button(L10n.tr("skills.cancel"), role: .cancel) {}
             }
@@ -112,6 +112,11 @@ struct SkillStoreView: View {
             .confirmationDialog(L10n.tr("skills.openclawMethods"), isPresented: $showAddOpenclawMethods) {
                 Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
                 Button(L10n.tr("skills.cancel"), role: .cancel) {}
+            }
+            .alert(L10n.tr("skills.desktopRequired"), isPresented: $showDesktopRequiredAlert) {
+                Button(L10n.tr("skills.ok"), role: .cancel) {}
+            } message: {
+                Text(L10n.tr("skills.desktopRequiredMessage"))
             }
             .sheet(item: $addSkillMode) { mode in
                 switch mode {

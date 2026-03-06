@@ -407,6 +407,9 @@ final class L10n {
         "skills.openclawMethods": "OpenClaw - 添加方式",
         "skills.forBuiltinAgent": "为内置助理添加",
         "skills.forOpenclawAgent": "为 OpenClaw 添加",
+        "skills.desktopRequired": "需要桌面端",
+        "skills.desktopRequiredMessage": "安装技能到 OpenClaw 需要在桌面端操作，请打开 AgentOS 桌面客户端进行安装。",
+        "skills.ok": "知道了",
 
         // skillDetail
         "skillDetail.title": "技能详情",
@@ -819,6 +822,9 @@ final class L10n {
         "skills.openclawMethods": "OpenClaw - Add Method",
         "skills.forBuiltinAgent": "Add for Built-in Agent",
         "skills.forOpenclawAgent": "Add for OpenClaw",
+        "skills.desktopRequired": "Desktop Required",
+        "skills.desktopRequiredMessage": "Installing skills to OpenClaw requires the desktop app. Please open AgentOS desktop client to install.",
+        "skills.ok": "OK",
 
         // skillDetail
         "skillDetail.title": "Skill Details",
