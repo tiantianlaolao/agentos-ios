@@ -213,10 +213,10 @@ final class SkillsViewModel {
         }
     }
 
-    func uninstallSkill(name: String, agentType: String? = nil) {
+    func uninstallSkill(name: String, agentType: String? = "builtin") {
         guard let ws = wsService, ws.isConnected else { return }
         var payload: [String: Any] = ["skillName": name]
-        if let agentType { payload["agentType"] = agentType }
+        payload["agentType"] = agentType ?? "builtin"
         let msg = WSMessage(type: .skillUninstall, payload: AnyCodable(payload))
         ws.send(msg)
 

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct ImportSkillMdView: View {
     let serverUrl: String
     let authToken: String
+    var agentType: String = "builtin"
     let onImported: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -154,7 +155,11 @@ struct ImportSkillMdView: View {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["content": content.trimmingCharacters(in: .whitespacesAndNewlines)])
+            var bodyDict: [String: Any] = ["content": content.trimmingCharacters(in: .whitespacesAndNewlines)]
+            if agentType != "builtin" {
+                bodyDict["agentType"] = agentType
+            }
+            request.httpBody = try JSONSerialization.data(withJSONObject: bodyDict)
 
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {

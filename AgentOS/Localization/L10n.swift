@@ -289,7 +289,6 @@ final class L10n {
         "skills.back": "返回",
         "skills.searchPlaceholder": "搜索技能...",
         "skills.noMatch": "没有匹配的技能",
-        "skills.addSkill": "+ 添加技能",
         "skills.addSkillTitle": "添加技能",
         "skills.httpSkill": "HTTP 技能",
         "skills.httpSkillDesc": "注册一个外部 HTTP 端点作为技能",
@@ -403,6 +402,11 @@ final class L10n {
         "skills.builtinAgent": "内置助理",
         "skills.openclawAgent": "OpenClaw",
         "skills.addSkill": "添加技能",
+        "skills.selectAgentFirst": "选择目标助理",
+        "skills.builtinMethods": "内置助理 - 添加方式",
+        "skills.openclawMethods": "OpenClaw - 添加方式",
+        "skills.forBuiltinAgent": "为内置助理添加",
+        "skills.forOpenclawAgent": "为 OpenClaw 添加",
 
         // skillDetail
         "skillDetail.title": "技能详情",
@@ -697,7 +701,6 @@ final class L10n {
         "skills.back": "Back",
         "skills.searchPlaceholder": "Search skills...",
         "skills.noMatch": "No skills match your filter",
-        "skills.addSkill": "+ Add Skill",
         "skills.addSkillTitle": "Add Skill",
         "skills.httpSkill": "HTTP Skill",
         "skills.httpSkillDesc": "Register an external HTTP endpoint as a skill",
@@ -811,6 +814,11 @@ final class L10n {
         "skills.builtinAgent": "Built-in Agent",
         "skills.openclawAgent": "OpenClaw",
         "skills.addSkill": "Add Skill",
+        "skills.selectAgentFirst": "Select Target Agent",
+        "skills.builtinMethods": "Built-in Agent - Add Method",
+        "skills.openclawMethods": "OpenClaw - Add Method",
+        "skills.forBuiltinAgent": "Add for Built-in Agent",
+        "skills.forOpenclawAgent": "Add for OpenClaw",
 
         // skillDetail
         "skillDetail.title": "Skill Details",

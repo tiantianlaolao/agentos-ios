@@ -11,10 +11,23 @@ struct FeaturedSkill: Codable, Identifiable, Sendable {
     var id: String { name }
 }
 
+struct CategoryInfo: Codable, Sendable {
+    let name: String
+    let count: Int
+}
+
 struct SkillStoreStats: Codable, Sendable {
     let totalSkills: Int
-    let totalInstalls: Int
-    let categories: [String]
+    let mcpAvailable: Int?
+    let categories: [CategoryInfo]
+}
+
+struct FeaturedResponse: Codable, Sendable {
+    let featured: [FeaturedSkill]
+}
+
+struct LibraryResponse: Codable, Sendable {
+    let skills: [SkillLibraryItem]
 }
 
 @MainActor
@@ -30,35 +43,10 @@ final class SkillStoreViewModel {
 
     private var serverBaseURL: String = ""
     private var authToken: String = ""
-    private weak var wsService: WebSocketService?
 
-    func setup(wsService: WebSocketService, serverUrl: String? = nil, authToken: String? = nil) {
-        self.wsService = wsService
-        if let url = serverUrl, !url.isEmpty {
-            self.serverBaseURL = url
-        }
-        if let token = authToken {
-            self.authToken = token
-        }
-        wsService.onMessage { [weak self] message in
-            Task { @MainActor in
-                self?.handleMessage(message)
-            }
-        }
-    }
-
-    private func handleMessage(_ message: WSMessage) {
-        if message.type == .skillLibraryResponse {
-            if let payload = message.payload?.dictValue,
-               let libraryArray = payload["skills"] as? [[String: Any]] {
-                let decoder = JSONDecoder()
-                if let data = try? JSONSerialization.data(withJSONObject: libraryArray),
-                   let items = try? decoder.decode([SkillLibraryItem].self, from: data) {
-                    allSkills = items
-                }
-            }
-            isLoading = false
-        }
+    func setup(serverUrl: String, authToken: String) {
+        self.serverBaseURL = serverUrl
+        self.authToken = authToken
     }
 
     private func authorizedRequest(url: URL) -> URLRequest {
@@ -73,7 +61,8 @@ final class SkillStoreViewModel {
         guard !serverBaseURL.isEmpty, let url = URL(string: "\(serverBaseURL)/api/skill-store/featured") else { return }
         do {
             let (data, _) = try await URLSession.shared.data(for: authorizedRequest(url: url))
-            featured = try JSONDecoder().decode([FeaturedSkill].self, from: data)
+            let response = try JSONDecoder().decode(FeaturedResponse.self, from: data)
+            featured = response.featured
         } catch {
             print("[SkillStore] Failed to fetch featured: \(error)")
         }
@@ -85,26 +74,26 @@ final class SkillStoreViewModel {
             let (data, _) = try await URLSession.shared.data(for: authorizedRequest(url: url))
             let decoded = try JSONDecoder().decode(SkillStoreStats.self, from: data)
             stats = decoded
-            categories = decoded.categories
+            categories = decoded.categories.map(\.name)
         } catch {
             print("[SkillStore] Failed to fetch stats: \(error)")
         }
     }
 
-    func fetchLibrary() {
-        guard let ws = wsService, ws.isConnected else { return }
+    func fetchLibrary() async {
+        guard !serverBaseURL.isEmpty, let url = URL(string: "\(serverBaseURL)/api/skill-library") else { return }
         isLoading = true
-        let msg = WSMessage(type: .skillLibraryRequest)
-        ws.send(msg)
+        do {
+            let (data, _) = try await URLSession.shared.data(for: authorizedRequest(url: url))
+            let response = try JSONDecoder().decode(LibraryResponse.self, from: data)
+            allSkills = response.skills
+        } catch {
+            print("[SkillStore] Failed to fetch library: \(error)")
+        }
+        isLoading = false
     }
 
     func installSkill(name: String, agentType: String? = nil) {
-        guard let ws = wsService, ws.isConnected else { return }
-        var payload: [String: Any] = ["skillName": name]
-        if let agentType { payload["agentType"] = agentType }
-        let msg = WSMessage(type: .skillInstall, payload: AnyCodable(payload))
-        ws.send(msg)
-
         // Optimistic update
         if let idx = allSkills.firstIndex(where: { $0.name == name }) {
             allSkills[idx].installed = true
@@ -114,17 +103,36 @@ final class SkillStoreViewModel {
                 allSkills[idx].installedAgents = agents
             }
         }
+
+        Task {
+            guard let url = URL(string: "\(serverBaseURL)/api/skill-library/install") else { return }
+            var request = authorizedRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            var body: [String: String] = ["skillName": name]
+            if let agentType { body["agentType"] = agentType }
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            _ = try? await URLSession.shared.data(for: request)
+        }
     }
 
-    func uninstallSkill(name: String, agentType: String? = nil) {
-        guard let ws = wsService, ws.isConnected else { return }
-        var payload: [String: Any] = ["skillName": name]
-        if let agentType { payload["agentType"] = agentType }
-        let msg = WSMessage(type: .skillUninstall, payload: AnyCodable(payload))
-        ws.send(msg)
-
+    func uninstallSkill(name: String, agentType: String? = "builtin") {
+        let resolvedAgent = agentType ?? "builtin"
         if let idx = allSkills.firstIndex(where: { $0.name == name }) {
             allSkills[idx].installed = false
+            var agents = allSkills[idx].installedAgents ?? [:]
+            agents[resolvedAgent] = false
+            allSkills[idx].installedAgents = agents
+        }
+
+        Task {
+            guard let url = URL(string: "\(serverBaseURL)/api/skill-library/uninstall") else { return }
+            var request = authorizedRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: String] = ["skillName": name, "agentType": resolvedAgent]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            _ = try? await URLSession.shared.data(for: request)
         }
     }
 

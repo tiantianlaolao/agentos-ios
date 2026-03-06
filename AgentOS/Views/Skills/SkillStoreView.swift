@@ -4,7 +4,10 @@ struct SkillStoreView: View {
     @State private var viewModel = SkillStoreViewModel()
     @State private var chatViewModel: ChatViewModel?
     @State private var showAddSkillSheet = false
+    @State private var showAddBuiltinMethods = false
+    @State private var showAddOpenclawMethods = false
     @State private var addSkillMode: AddSkillMode?
+    @State private var addSkillAgentType: String = "builtin"
     @State private var installAgentSheet: SkillLibraryItem?
 
     private enum AddSkillMode: String, Identifiable {
@@ -67,7 +70,7 @@ struct SkillStoreView: View {
                 set: { if !$0 { installAgentSheet = nil } }
             )) {
                 if let skill = installAgentSheet {
-                    let agents = skill.compatibleAgents ?? ["builtin"]
+                    let agents = (skill.compatibleAgents ?? ["builtin"]).filter { $0 != "copaw" }
                     ForEach(agents, id: \.self) { agent in
                         Button(agentLabel(agent)) {
                             viewModel.installSkill(name: skill.name, agentType: agent)
@@ -79,23 +82,41 @@ struct SkillStoreView: View {
                     }
                 }
             }
-            .confirmationDialog(L10n.tr("skills.addSkillTitle"), isPresented: $showAddSkillSheet) {
+            // Step 1: Select agent type for adding skill
+            .confirmationDialog(L10n.tr("skills.selectAgentFirst"), isPresented: $showAddSkillSheet) {
+                Button(L10n.tr("skills.builtinAgent")) {
+                    addSkillAgentType = "builtin"
+                    showAddBuiltinMethods = true
+                }
+                Button(L10n.tr("skills.openclawAgent")) {
+                    addSkillAgentType = "openclaw"
+                    showAddOpenclawMethods = true
+                }
+                Button(L10n.tr("skills.cancel"), role: .cancel) {}
+            }
+            // Step 2a: Builtin agent methods (4 options)
+            .confirmationDialog(L10n.tr("skills.builtinMethods"), isPresented: $showAddBuiltinMethods) {
                 Button(L10n.tr("skills.registerHttpSkill")) { addSkillMode = .http }
                 Button(L10n.tr("skills.mcpServers")) { addSkillMode = .mcp }
                 Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
                 Button(L10n.tr("skills.aiGenerate")) { addSkillMode = .generate }
                 Button(L10n.tr("skills.cancel"), role: .cancel) {}
             }
+            // Step 2b: OpenClaw methods (only SKILL.md)
+            .confirmationDialog(L10n.tr("skills.openclawMethods"), isPresented: $showAddOpenclawMethods) {
+                Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
+                Button(L10n.tr("skills.cancel"), role: .cancel) {}
+            }
             .sheet(item: $addSkillMode) { mode in
                 switch mode {
                 case .http:
-                    RegisterSkillView(serverUrl: "", authToken: "", onRegistered: { viewModel.fetchLibrary() })
+                    RegisterSkillView(serverUrl: "", authToken: "", onRegistered: { Task { await viewModel.fetchLibrary() } })
                 case .mcp:
-                    AddMcpServerView(serverUrl: "", authToken: "", onAdded: { viewModel.fetchLibrary() })
+                    AddMcpServerView(serverUrl: "", authToken: "", onAdded: { Task { await viewModel.fetchLibrary() } })
                 case .skillmd:
-                    ImportSkillMdView(serverUrl: "", authToken: "", onImported: { viewModel.fetchLibrary() })
+                    ImportSkillMdView(serverUrl: "", authToken: "", agentType: addSkillAgentType, onImported: { Task { await viewModel.fetchLibrary() } })
                 case .generate:
-                    GenerateSkillView(serverUrl: "", authToken: "", onGenerated: { viewModel.fetchLibrary() })
+                    GenerateSkillView(serverUrl: "", authToken: "", onGenerated: { Task { await viewModel.fetchLibrary() } })
                 }
             }
         }
@@ -103,9 +124,10 @@ struct SkillStoreView: View {
             // Load server URL and token from settings
             let url = (try? await DatabaseService.shared.getSetting(key: "serverUrl")) ?? "http://43.155.104.45:3100"
             let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""
-            viewModel.setup(wsService: WebSocketService.shared, serverUrl: url, authToken: token)
+            viewModel.setup(serverUrl: url, authToken: token)
             await viewModel.fetchFeatured()
             await viewModel.fetchStats()
+            await viewModel.fetchLibrary()
         }
     }
 
@@ -118,9 +140,19 @@ struct SkillStoreView: View {
     }
 
     private func handleInstall(_ skill: SkillLibraryItem) {
-        let agents = skill.compatibleAgents ?? []
+        // Only skillmd type skills can be installed for OpenClaw
+        // Non-skillmd: install directly for builtin without showing agent picker
+        let isSkillMd = skill.skillType == "skillmd"
+
+        if !isSkillMd {
+            viewModel.installSkill(name: skill.name, agentType: "builtin")
+            return
+        }
+
+        // For skillmd skills, filter out copaw and show agent picker if multiple agents
+        let agents = (skill.compatibleAgents ?? ["builtin"]).filter { $0 != "copaw" }
         if agents.count <= 1 {
-            viewModel.installSkill(name: skill.name, agentType: agents.first)
+            viewModel.installSkill(name: skill.name, agentType: agents.first ?? "builtin")
         } else {
             installAgentSheet = skill
         }
@@ -350,8 +382,8 @@ struct SkillStoreView: View {
                 }
             }
 
-            // Compatible agents row
-            if let agents = skill.compatibleAgents, !agents.isEmpty {
+            // Compatible agents row (filter out copaw)
+            if let agents = skill.compatibleAgents?.filter({ $0 != "copaw" }), !agents.isEmpty {
                 HStack(spacing: 4) {
                     Text(L10n.tr("skills.compatibleWith") + ":")
                         .font(AppTheme.smallFont)
@@ -369,9 +401,9 @@ struct SkillStoreView: View {
                 .padding(.leading, 52)
             }
 
-            // Installed agents row
+            // Installed agents row (filter out copaw)
             if let installedAgents = skill.installedAgents {
-                let activeAgents = installedAgents.filter { $0.value }.map(\.key)
+                let activeAgents = installedAgents.filter { $0.value && $0.key != "copaw" }.map(\.key)
                 if !activeAgents.isEmpty {
                     HStack(spacing: 4) {
                         Text(L10n.tr("skills.installedFor") + ":")
