@@ -158,6 +158,25 @@ struct SkillStoreView: View {
         }
     }
 
+    private func handleUninstall(_ skill: SkillLibraryItem) {
+        // Find which agents have this skill installed
+        let installedAgentNames = (skill.installedAgents ?? [:])
+            .filter { $0.value && $0.key != "copaw" }
+            .map(\.key)
+
+        if installedAgentNames.isEmpty {
+            // Fallback: uninstall for builtin
+            viewModel.uninstallSkill(name: skill.name, agentType: "builtin")
+        } else if installedAgentNames.count == 1 {
+            viewModel.uninstallSkill(name: skill.name, agentType: installedAgentNames[0])
+        } else {
+            // Multiple agents — uninstall all (could show picker but keep simple for now)
+            for agent in installedAgentNames {
+                viewModel.uninstallSkill(name: skill.name, agentType: agent)
+            }
+        }
+    }
+
     // MARK: - Search Bar
 
     private var searchBar: some View {
@@ -363,9 +382,23 @@ struct SkillStoreView: View {
                         }
                     }
                     if skill.installed {
-                        Text(L10n.tr("skills.installedBadge"))
-                            .font(AppTheme.smallFont.weight(.semibold))
-                            .foregroundStyle(AppTheme.success)
+                        VStack(spacing: 4) {
+                            Button {
+                                handleUninstall(skill)
+                            } label: {
+                                Text(L10n.tr("skills.uninstall"))
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(AppTheme.error)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .overlay(
+                                        Capsule().stroke(AppTheme.error, lineWidth: 1)
+                                    )
+                            }
+                            Text(L10n.tr("skills.installedBadge"))
+                                .font(AppTheme.smallFont.weight(.semibold))
+                                .foregroundStyle(AppTheme.success)
+                        }
                     } else {
                         Button {
                             handleInstall(skill)

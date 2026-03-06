@@ -119,10 +119,12 @@ final class SkillStoreViewModel {
     func uninstallSkill(name: String, agentType: String? = "builtin") {
         let resolvedAgent = agentType ?? "builtin"
         if let idx = allSkills.firstIndex(where: { $0.name == name }) {
-            allSkills[idx].installed = false
             var agents = allSkills[idx].installedAgents ?? [:]
-            agents[resolvedAgent] = false
+            agents.removeValue(forKey: resolvedAgent)
             allSkills[idx].installedAgents = agents
+            // Only mark as uninstalled if no agents remain
+            let stillInstalled = agents.values.contains(true)
+            allSkills[idx].installed = stillInstalled
         }
 
         Task {
