@@ -71,9 +71,15 @@ struct SkillStoreView: View {
             )) {
                 if let skill = installAgentSheet {
                     let agents = (skill.compatibleAgents ?? ["builtin"]).filter { $0 != "copaw" }
-                    ForEach(agents, id: \.self) { agent in
-                        Button(agentLabel(agent)) {
-                            viewModel.installSkill(name: skill.name, agentType: agent)
+                    if agents.contains("builtin") {
+                        Button(L10n.tr("skills.forBuiltinAgent")) {
+                            viewModel.installSkill(name: skill.name, agentType: "builtin")
+                            installAgentSheet = nil
+                        }
+                    }
+                    if agents.contains("openclaw") {
+                        Button(L10n.tr("skills.forOpenclawAgent")) {
+                            viewModel.installSkill(name: skill.name, agentType: "openclaw")
                             installAgentSheet = nil
                         }
                     }

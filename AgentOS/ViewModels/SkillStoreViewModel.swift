@@ -94,14 +94,15 @@ final class SkillStoreViewModel {
     }
 
     func installSkill(name: String, agentType: String? = nil) {
+        let resolvedAgent = agentType ?? "builtin"
+        print("[SkillStore] installSkill: name=\(name), agentType=\(resolvedAgent)")
+
         // Optimistic update
         if let idx = allSkills.firstIndex(where: { $0.name == name }) {
             allSkills[idx].installed = true
-            if let agentType {
-                var agents = allSkills[idx].installedAgents ?? [:]
-                agents[agentType] = true
-                allSkills[idx].installedAgents = agents
-            }
+            var agents = allSkills[idx].installedAgents ?? [:]
+            agents[resolvedAgent] = true
+            allSkills[idx].installedAgents = agents
         }
 
         Task {
@@ -109,10 +110,19 @@ final class SkillStoreViewModel {
             var request = authorizedRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            var body: [String: String] = ["skillName": name]
-            if let agentType { body["agentType"] = agentType }
+            let body: [String: String] = ["skillName": name, "agentType": resolvedAgent]
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-            _ = try? await URLSession.shared.data(for: request)
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                    let errorBody = String(data: data, encoding: .utf8) ?? ""
+                    print("[SkillStore] Install failed: HTTP \(httpResponse.statusCode) - \(errorBody)")
+                } else {
+                    print("[SkillStore] Install succeeded: \(name) for \(resolvedAgent)")
+                }
+            } catch {
+                print("[SkillStore] Install error: \(error)")
+            }
         }
     }
 
