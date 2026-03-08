@@ -8,6 +8,7 @@ private struct McpServer: Identifiable {
     let connected: Bool
     let system: Bool
     let toolCount: Int
+    let location: String  // "server" or "local"
 
     var id: String { name }
 }
@@ -28,11 +29,22 @@ struct AddMcpServerView: View {
     @State private var command = ""
     @State private var args = ""
     @State private var isAdding = false
+    @State private var location: String = "server"
 
     private var baseUrl: String {
         serverUrl.replacingOccurrences(of: "ws://", with: "http://")
             .replacingOccurrences(of: "wss://", with: "https://")
             .replacingOccurrences(of: "/ws", with: "")
+    }
+
+    private static let localOnlyPatterns = [
+        "chrome-devtools-mcp", "puppeteer", "server-puppeteer",
+        "playwright", "browser-tools", "browser-use"
+    ]
+
+    private func detectLocation() -> String {
+        let fullArgs = "\(command) \(args)".lowercased()
+        return Self.localOnlyPatterns.contains(where: { fullArgs.contains($0) }) ? "local" : "server"
     }
 
     var body: some View {
@@ -147,6 +159,16 @@ struct AddMcpServerView: View {
                             .background(AppTheme.success.opacity(0.15))
                             .clipShape(Capsule())
                     }
+
+                    if server.location == "local" {
+                        Text("Local")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.orange.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
                 }
 
                 Spacer()
@@ -214,6 +236,25 @@ struct AddMcpServerView: View {
                 .font(AppTheme.smallFont)
                 .foregroundStyle(AppTheme.textTertiary)
 
+            // Location picker
+            Text("Location")
+                .font(AppTheme.captionFont.weight(.semibold))
+                .foregroundStyle(AppTheme.textSecondary)
+                .padding(.top, 4)
+            Picker("Location", selection: $location) {
+                Text("Server").tag("server")
+                Text("Local Computer").tag("local")
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: command) { _, _ in location = detectLocation() }
+            .onChange(of: args) { _, _ in location = detectLocation() }
+
+            if location == "local" {
+                Text("This tool will run on your local computer (requires desktop app)")
+                    .font(AppTheme.smallFont)
+                    .foregroundStyle(.orange)
+            }
+
             HStack(spacing: 8) {
                 Button {
                     Task { await handleAdd() }
@@ -240,6 +281,7 @@ struct AddMcpServerView: View {
                     name = ""
                     command = ""
                     args = ""
+                    location = "server"
                 } label: {
                     Text(L10n.tr("skills.cancel"))
                         .font(AppTheme.bodyFont)
@@ -279,7 +321,8 @@ struct AddMcpServerView: View {
                         enabled: dict["enabled"] as? Bool ?? true,
                         connected: dict["connected"] as? Bool ?? false,
                         system: dict["system"] as? Bool ?? false,
-                        toolCount: tools.count
+                        toolCount: tools.count,
+                        location: dict["location"] as? String ?? "server"
                     )
                 }
             }
@@ -306,7 +349,8 @@ struct AddMcpServerView: View {
             let body: [String: Any] = [
                 "name": name.trimmingCharacters(in: .whitespaces),
                 "command": command.trimmingCharacters(in: .whitespaces),
-                "args": argsArray
+                "args": argsArray,
+                "location": location
             ]
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -325,6 +369,7 @@ struct AddMcpServerView: View {
             name = ""
             command = ""
             args = ""
+            location = "server"
             showAddForm = false
             await fetchServers()
             onAdded()
