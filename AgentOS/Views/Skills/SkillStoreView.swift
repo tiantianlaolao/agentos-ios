@@ -121,13 +121,13 @@ struct SkillStoreView: View {
             .sheet(item: $addSkillMode) { mode in
                 switch mode {
                 case .http:
-                    RegisterSkillView(serverUrl: "", authToken: "", onRegistered: { Task { await viewModel.fetchLibrary() } })
+                    RegisterSkillView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onRegistered: { Task { await viewModel.fetchLibrary() } })
                 case .mcp:
-                    AddMcpServerView(serverUrl: "", authToken: "", onAdded: { Task { await viewModel.fetchLibrary() } })
+                    AddMcpServerView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onAdded: { Task { await viewModel.fetchLibrary() } })
                 case .skillmd:
-                    ImportSkillMdView(serverUrl: "", authToken: "", agentType: addSkillAgentType, onImported: { Task { await viewModel.fetchLibrary() } })
+                    ImportSkillMdView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, agentType: addSkillAgentType, onImported: { Task { await viewModel.fetchLibrary() } })
                 case .generate:
-                    GenerateSkillView(serverUrl: "", authToken: "", onGenerated: { Task { await viewModel.fetchLibrary() } })
+                    GenerateSkillView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onGenerated: { Task { await viewModel.fetchLibrary() } })
                 }
             }
         }

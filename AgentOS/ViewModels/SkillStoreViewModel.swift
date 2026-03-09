@@ -41,8 +41,8 @@ final class SkillStoreViewModel {
     var isLoading = false
     var stats: SkillStoreStats?
 
-    private var serverBaseURL: String = ""
-    private var authToken: String = ""
+    private(set) var serverBaseURL: String = ""
+    private(set) var authToken: String = ""
 
     func setup(serverUrl: String, authToken: String) {
         self.serverBaseURL = serverUrl
