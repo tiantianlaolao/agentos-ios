@@ -86,6 +86,7 @@ struct MessageBubbleView: View {
                     Text(message.content)
                         .font(.system(size: 16))
                         .foregroundStyle(.white)
+                        .textSelection(.enabled)
                 }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)

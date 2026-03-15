@@ -35,7 +35,7 @@ final class MemoryAPIService: Sendable {
             throw MemoryAPIError.invalidURL
         }
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
 
