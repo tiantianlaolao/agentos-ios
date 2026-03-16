@@ -6,7 +6,7 @@ struct SkillsPanelView: View {
     let mode: ConnectionMode
     var onClose: () -> Void
 
-    @State private var serverUrl = "http://43.155.104.45:3100"
+    @State private var serverUrl = ServerConfig.shared.httpBaseURL
     @State private var authToken = ""
 
     var body: some View {

@@ -3,7 +3,7 @@ import Foundation
 actor UploadService {
     static let shared = UploadService()
 
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String { ServerConfig.shared.httpBaseURL }
 
     func upload(data: Data, fileName: String, mimeType: String, authToken: String? = nil, deviceId: String? = nil) async throws -> Attachment {
         let url = URL(string: "\(serverBaseURL)/upload")!

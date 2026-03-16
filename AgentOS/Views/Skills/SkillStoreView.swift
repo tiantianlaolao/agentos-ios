@@ -133,7 +133,7 @@ struct SkillStoreView: View {
         }
         .task {
             // Load server URL and token from settings
-            let url = (try? await DatabaseService.shared.getSetting(key: "serverUrl")) ?? "http://43.155.104.45:3100"
+            let url = (try? await DatabaseService.shared.getSetting(key: "serverUrl")) ?? ServerConfig.shared.httpBaseURL
             let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? ""
             viewModel.setup(serverUrl: url, authToken: token)
             await viewModel.fetchFeatured()

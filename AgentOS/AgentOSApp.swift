@@ -14,6 +14,12 @@ struct AgentOSApp: App {
                 print("[AgentOS] Database init failed: \(error)")
             }
         }
+
+        // Auto-select fastest server node
+        Task {
+            let bestUrl = await ServerSelector.selectBest()
+            await ServerConfig.shared.update(wsUrl: bestUrl)
+        }
     }
 
     var body: some Scene {

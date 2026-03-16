@@ -29,7 +29,7 @@ final class AuthViewModel {
 
     // MARK: - Private
 
-    private let baseURL = "http://43.155.104.45:3100"
+    private var baseURL: String { ServerConfig.shared.httpBaseURL }
 
     // MARK: - Auth Actions
 

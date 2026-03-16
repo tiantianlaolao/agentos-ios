@@ -3,7 +3,7 @@ import SwiftUI
 struct AttachmentPreviewView: View {
     let attachments: [Attachment]
     let onRemove: (Int) -> Void
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String { ServerConfig.shared.httpBaseURL }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {

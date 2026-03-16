@@ -9,7 +9,7 @@ struct MessageBubbleView: View {
 
     @State private var selectedImageURL: URL?
 
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String { ServerConfig.shared.httpBaseURL }
 
     var body: some View {
         let isUser = message.role == .user

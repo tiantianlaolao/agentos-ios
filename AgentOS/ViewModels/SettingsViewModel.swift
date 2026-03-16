@@ -35,7 +35,7 @@ final class SettingsViewModel {
 
     // App
     var locale: String = "zh"
-    var serverUrl: String = "http://43.155.104.45:3100"
+    var serverUrl: String = ServerConfig.shared.httpBaseURL
 
     // UI
     var isSaving: Bool = false

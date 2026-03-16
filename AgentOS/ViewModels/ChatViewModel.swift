@@ -81,7 +81,7 @@ final class ChatViewModel {
 
     // Stream timeout
     private var streamTimeoutTask: Task<Void, Never>?
-    private let streamTimeoutDuration: TimeInterval = 120
+    private let streamTimeoutDuration: TimeInterval = 300
 
     // MARK: - Init
 
@@ -233,7 +233,7 @@ final class ChatViewModel {
         guard !welcomeShown, messages.isEmpty, connectionMode == .builtin else { return }
         welcomeShown = true
 
-        let serverUrl = "http://43.155.104.45:3100"
+        let serverUrl = ServerConfig.shared.httpBaseURL
         Task {
             do {
                 let url = URL(string: "\(serverUrl)/assistant/config")!

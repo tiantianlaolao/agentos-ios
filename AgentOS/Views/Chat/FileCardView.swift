@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FileCardView: View {
     let attachment: Attachment
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String { ServerConfig.shared.httpBaseURL }
 
     private var iconName: String {
         switch attachment.mimeType {

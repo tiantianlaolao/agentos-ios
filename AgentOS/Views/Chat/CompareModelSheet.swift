@@ -14,7 +14,7 @@ struct CompareModelSheet: View {
     @State private var isLoading = true
     @State private var errorText: String?
 
-    private let serverBaseURL = "http://43.155.104.45:3100"
+    private var serverBaseURL: String { ServerConfig.shared.httpBaseURL }
 
     var body: some View {
         NavigationStack {
