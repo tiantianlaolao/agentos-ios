@@ -136,6 +136,12 @@ final class WebSocketService {
         cleanup()
         connectionState = .connecting
 
+        // Re-read from ServerConfig in case it was updated after init
+        let currentURL = ServerConfig.shared.wsURL
+        if currentURL != serverURL {
+            serverURL = currentURL
+        }
+
         guard let url = URL(string: serverURL) else {
             print("[WS] Invalid URL: \(serverURL)")
             return
