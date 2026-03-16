@@ -18,25 +18,6 @@ struct MessageBubbleView: View {
             if isUser { Spacer(minLength: 60) }
 
             bubbleContent(isUser: isUser)
-                .contextMenu {
-                    Button {
-                        onCopy()
-                    } label: {
-                        Label(L10n.tr("chat.copy"), systemImage: "doc.on.doc")
-                    }
-                    if !isUser && message.compareModel == nil && !message.content.hasPrefix("[Error]") && onCompare != nil {
-                        Button {
-                            onCompare?(message.content)
-                        } label: {
-                            Label(L10n.tr("chat.compare"), systemImage: "arrow.triangle.2.circlepath")
-                        }
-                    }
-                    Button(role: .destructive) {
-                        onDelete()
-                    } label: {
-                        Label(L10n.tr("chat.deleteMessage"), systemImage: "trash")
-                    }
-                }
 
             if !isUser { Spacer(minLength: 60) }
         }
@@ -50,6 +31,30 @@ struct MessageBubbleView: View {
                 ImageViewerView(imageURL: url)
             }
         }
+    }
+
+    @ViewBuilder
+    private func actionIcons(isUser: Bool) -> some View {
+        HStack(spacing: 8) {
+            Button { onCopy() } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 11))
+                    .foregroundStyle(isUser ? .white.opacity(0.5) : AppTheme.textTertiary)
+            }
+            if !isUser && message.compareModel == nil && !message.content.hasPrefix("[Error]") && onCompare != nil {
+                Button { onCompare?(message.content) } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+            Button { onDelete() } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 11))
+                    .foregroundStyle(isUser ? .white.opacity(0.5) : AppTheme.textTertiary)
+            }
+        }
+        .padding(.leading, 8)
     }
 
     @ViewBuilder
@@ -79,7 +84,7 @@ struct MessageBubbleView: View {
         let timeStr = Date.fromTimestamp(message.timestamp).chatTimeLabel()
 
         if isUser {
-            // User bubble - attachments + text + time inside
+            // User bubble - attachments + text + time + actions inside
             VStack(alignment: .trailing, spacing: 4) {
                 attachmentViews(isUser: true)
                 if !message.content.isEmpty {
@@ -93,6 +98,7 @@ struct MessageBubbleView: View {
                     Text(timeStr)
                         .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.55))
+                    actionIcons(isUser: true)
                 }
                 .padding(.top, 2)
             }
@@ -140,6 +146,7 @@ struct MessageBubbleView: View {
                     Text(timeStr)
                         .font(.system(size: 10))
                         .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
+                    actionIcons(isUser: false)
                 }
                 .padding(.top, 2)
             }
