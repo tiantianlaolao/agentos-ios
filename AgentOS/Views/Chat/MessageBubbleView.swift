@@ -88,10 +88,7 @@ struct MessageBubbleView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 attachmentViews(isUser: true)
                 if !message.content.isEmpty {
-                    Text(message.content)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.white)
-                        .textSelection(.enabled)
+                    SelectableTextView(text: message.content, isUserBubble: true)
                 }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -137,9 +134,7 @@ struct MessageBubbleView: View {
                 }
                 attachmentViews(isUser: false)
                 if !message.content.isEmpty {
-                    Markdown(message.content)
-                        .markdownTheme(MarkdownThemeProvider.agentOS)
-                        .textSelection(.enabled)
+                    SelectableContentView(content: message.content)
                 }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -155,6 +150,103 @@ struct MessageBubbleView: View {
             .background(AppTheme.assistantBubble)
             .clipShape(BubbleShape(isUser: false))
         }
+    }
+}
+
+// MARK: - Selectable Content (text selectable, code blocks tap-to-copy)
+
+struct SelectableContentView: View {
+    let content: String
+
+    private enum Segment: Identifiable {
+        case text(String)
+        case code(language: String, code: String)
+
+        var id: String {
+            switch self {
+            case .text(let s): return "t:\(s.prefix(40))"
+            case .code(_, let s): return "c:\(s.prefix(40))"
+            }
+        }
+    }
+
+    private var segments: [Segment] {
+        var result: [Segment] = []
+        let pattern = "```(\\w*)\\n([\\s\\S]*?)```"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return [.text(content)]
+        }
+        let nsContent = content as NSString
+        var lastEnd = 0
+        let matches = regex.matches(in: content, range: NSRange(location: 0, length: nsContent.length))
+        for match in matches {
+            let matchRange = match.range
+            if matchRange.location > lastEnd {
+                let textPart = nsContent.substring(with: NSRange(location: lastEnd, length: matchRange.location - lastEnd)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !textPart.isEmpty {
+                    result.append(.text(textPart))
+                }
+            }
+            let lang = match.numberOfRanges > 1 ? nsContent.substring(with: match.range(at: 1)) : ""
+            let code = match.numberOfRanges > 2 ? nsContent.substring(with: match.range(at: 2)) : ""
+            result.append(.code(language: lang, code: code.trimmingCharacters(in: .newlines)))
+            lastEnd = matchRange.location + matchRange.length
+        }
+        if lastEnd < nsContent.length {
+            let remaining = nsContent.substring(from: lastEnd).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !remaining.isEmpty {
+                result.append(.text(remaining))
+            }
+        }
+        return result
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(segments) { segment in
+                switch segment {
+                case .text(let text):
+                    SelectableTextView(text: text)
+                case .code(let language, let code):
+                    CodeBlockView(code: code, language: language)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Native selectable text (UITextView wrapper)
+
+struct SelectableTextView: UIViewRepresentable {
+    let text: String
+    var isUserBubble: Bool = false
+
+    func makeUIView(context: Context) -> UITextView {
+        let tv = UITextView()
+        tv.isEditable = false
+        tv.isSelectable = true
+        tv.isScrollEnabled = false
+        tv.backgroundColor = .clear
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.font = .systemFont(ofSize: 16)
+        tv.textColor = isUserBubble ? .white : UIColor(AppTheme.textPrimary)
+        tv.dataDetectorTypes = [.link]
+        tv.linkTextAttributes = [.foregroundColor: isUserBubble ? UIColor.white.withAlphaComponent(0.8) : UIColor(AppTheme.primaryLight)]
+        return tv
+    }
+
+    func updateUIView(_ tv: UITextView, context: Context) {
+        if tv.text != text {
+            tv.text = text
+        }
+        tv.textColor = isUserBubble ? .white : UIColor(AppTheme.textPrimary)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? UIScreen.main.bounds.width - 60
+        let size = uiView.sizeThatFits(CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
+        return CGSize(width: width, height: size.height)
     }
 }
 
