@@ -55,7 +55,8 @@ struct FileCardView: View {
     }
 
     private func shareFile() {
-        guard let url = URL(string: "\(serverBaseURL)\(attachment.url)") else { return }
+        let rawUrl = attachment.url.hasPrefix("http") ? attachment.url : "\(serverBaseURL)\(attachment.url)"
+        guard let url = URL(string: rawUrl) else { return }
         Task {
             guard let (data, _) = try? await URLSession.shared.data(from: url) else { return }
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(attachment.name)

@@ -11,7 +11,7 @@ struct AttachmentPreviewView: View {
                 ForEach(Array(attachments.enumerated()), id: \.element.id) { index, attachment in
                     ZStack(alignment: .topTrailing) {
                         if attachment.type == .image {
-                            AsyncImage(url: URL(string: "\(serverBaseURL)\(attachment.url)")) { image in
+                            AsyncImage(url: URL(string: attachment.url.hasPrefix("http") ? attachment.url : "\(serverBaseURL)\(attachment.url)")) { image in
                                 image.resizable().aspectRatio(contentMode: .fill)
                             } placeholder: {
                                 ProgressView()

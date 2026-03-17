@@ -62,7 +62,8 @@ struct MessageBubbleView: View {
         if let attachments = message.attachments, !attachments.isEmpty {
             ForEach(attachments) { attachment in
                 if attachment.type == .image {
-                    let url = URL(string: "\(serverBaseURL)\(attachment.url)")
+                    let rawUrl = attachment.url.hasPrefix("http") ? attachment.url : "\(serverBaseURL)\(attachment.url)"
+                    let url = URL(string: rawUrl)
                     AsyncImage(url: url) { image in
                         image.resizable().aspectRatio(contentMode: .fit)
                     } placeholder: {
