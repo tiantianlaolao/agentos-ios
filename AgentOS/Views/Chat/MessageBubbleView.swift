@@ -293,8 +293,11 @@ struct StreamingBubbleView: View {
         HStack(alignment: .bottom, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .bottom, spacing: 0) {
-                    Markdown(content)
-                        .markdownTheme(MarkdownThemeProvider.agentOS)
+                    Text(content)
+                        .font(.system(size: 16))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineSpacing(4)
+                        .textSelection(.enabled)
                     StreamingCursorView()
                 }
             }
