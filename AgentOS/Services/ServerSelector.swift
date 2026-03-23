@@ -3,8 +3,8 @@ import Foundation
 /// Shared server config — all code reads from here (thread-safe)
 final class ServerConfig: Sendable {
     static let shared = ServerConfig()
-    nonisolated(unsafe) private(set) var httpBaseURL = "http://43.155.104.45:3100"
-    nonisolated(unsafe) private(set) var wsURL = "ws://43.155.104.45:3100/ws"
+    nonisolated(unsafe) private(set) var httpBaseURL = "http://agentos.tybbtech.com:3100"
+    nonisolated(unsafe) private(set) var wsURL = "ws://agentos.tybbtech.com:3100/ws"
 
     func update(wsUrl: String) {
         self.wsURL = wsUrl
@@ -22,11 +22,10 @@ enum ServerSelector {
     }
 
     static let servers: [ServerNode] = [
-        ServerNode(name: "cn", ws: "ws://129.211.168.244:3200/ws", http: "http://129.211.168.244:3200"),
-        ServerNode(name: "hk", ws: "ws://43.155.104.45:3100/ws", http: "http://43.155.104.45:3100"),
+        ServerNode(name: "main", ws: "ws://agentos.tybbtech.com:3100/ws", http: "http://agentos.tybbtech.com:3100"),
     ]
 
-    static let defaultWS = "ws://43.155.104.45:3100/ws"
+    static let defaultWS = "ws://agentos.tybbtech.com:3100/ws"
 
     /// Ping a server and return latency in ms, or nil on failure
     static func ping(_ httpUrl: String, timeout: TimeInterval = 5) async -> Double? {
