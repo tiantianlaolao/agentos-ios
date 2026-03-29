@@ -9,7 +9,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>AgentOS</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>7</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundlePackageType</key>
@@ -32,7 +32,9 @@
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>UIBackgroundModes</key>
-	<array/>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>AgentOS needs access to save images to your photo library.</string>
 </dict>

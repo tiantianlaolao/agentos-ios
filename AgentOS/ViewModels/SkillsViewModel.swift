@@ -44,7 +44,6 @@ final class SkillsViewModel {
 
     enum AddSkillMode: String, Identifiable {
         case http
-        case mcp
         case skillmd
         case generate
         var id: String { rawValue }

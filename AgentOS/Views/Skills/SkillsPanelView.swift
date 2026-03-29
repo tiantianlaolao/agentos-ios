@@ -241,9 +241,6 @@ struct SkillsPanelView: View {
             Button { viewModel.addSkillMode = .http } label: {
                 Label(L10n.tr("skills.registerHttpSkill"), systemImage: "link")
             }
-            Button { viewModel.addSkillMode = .mcp } label: {
-                Label(L10n.tr("skills.mcpServers"), systemImage: "server.rack")
-            }
             Button { viewModel.addSkillMode = .skillmd } label: {
                 Label(L10n.tr("skills.importSkillMd"), systemImage: "doc.text")
             }

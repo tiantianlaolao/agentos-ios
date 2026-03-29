@@ -12,7 +12,7 @@ struct SkillStoreView: View {
     @State private var showDesktopRequiredAlert = false
 
     private enum AddSkillMode: String, Identifiable {
-        case http, mcp, skillmd, generate
+        case http, skillmd, generate
         var id: String { rawValue }
     }
 
@@ -33,9 +33,6 @@ struct SkillStoreView: View {
 
                         // Category chips
                         categoryChips
-
-                        // MCP banner
-                        mcpBanner
 
                         // Skill list
                         skillList
@@ -103,7 +100,6 @@ struct SkillStoreView: View {
             // Step 2a: Builtin agent methods (4 options)
             .confirmationDialog(L10n.tr("skills.builtinMethods"), isPresented: $showAddBuiltinMethods) {
                 Button(L10n.tr("skills.registerHttpSkill")) { addSkillMode = .http }
-                Button(L10n.tr("skills.mcpServers")) { addSkillMode = .mcp }
                 Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
                 Button(L10n.tr("skills.aiGenerate")) { addSkillMode = .generate }
                 Button(L10n.tr("skills.cancel"), role: .cancel) {}
@@ -122,8 +118,6 @@ struct SkillStoreView: View {
                 switch mode {
                 case .http:
                     RegisterSkillView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onRegistered: { Task { await viewModel.fetchLibrary() } })
-                case .mcp:
-                    AddMcpServerView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onAdded: { Task { await viewModel.fetchLibrary() } })
                 case .skillmd:
                     ImportSkillMdView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, agentType: addSkillAgentType, onImported: { Task { await viewModel.fetchLibrary() } })
                 case .generate:
@@ -214,6 +208,8 @@ struct SkillStoreView: View {
 
     // MARK: - Featured
 
+    private var lang: String { L10n.shared.locale }
+
     private var featuredSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.tr("skills.featured"))
@@ -227,11 +223,11 @@ struct SkillStoreView: View {
                         VStack(spacing: 8) {
                             Text(skill.emoji ?? "")
                                 .font(.system(size: 32))
-                            Text(skill.name)
+                            Text(skill.localizedName(language: lang))
                                 .font(AppTheme.captionFont.weight(.semibold))
                                 .foregroundStyle(AppTheme.textPrimary)
                                 .lineLimit(1)
-                            Text(skill.description)
+                            Text(skill.localizedDescription(language: lang))
                                 .font(AppTheme.smallFont)
                                 .foregroundStyle(AppTheme.textSecondary)
                                 .lineLimit(2)
@@ -285,32 +281,6 @@ struct SkillStoreView: View {
         }
     }
 
-    // MARK: - MCP Banner
-
-    private var mcpBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "cpu")
-                .font(.system(size: 24))
-                .foregroundStyle(AppTheme.accent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.tr("skills.mcpBanner"))
-                    .font(AppTheme.bodyFont.weight(.medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(L10n.tr("skills.mcpLearnMore"))
-                    .font(AppTheme.captionFont)
-                    .foregroundStyle(AppTheme.accent)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13))
-                .foregroundStyle(AppTheme.textTertiary)
-        }
-        .padding(14)
-        .background(AppTheme.accent.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .padding(.horizontal, AppTheme.paddingLarge)
-    }
-
     // MARK: - Skill List
 
     private var skillList: some View {
@@ -344,7 +314,7 @@ struct SkillStoreView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(skill.name)
+                        Text(skill.localizedName(language: lang))
                             .font(AppTheme.bodyFont.weight(.medium))
                             .foregroundStyle(AppTheme.textPrimary)
                             .lineLimit(1)
@@ -359,7 +329,7 @@ struct SkillStoreView: View {
                                 .clipShape(Capsule())
                         }
                     }
-                    Text(skill.description)
+                    Text(skill.localizedDescription(language: lang))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(2)

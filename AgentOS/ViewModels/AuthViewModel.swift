@@ -71,6 +71,7 @@ final class AuthViewModel {
                 hasRealLogin = true
                 savedPhone = trimmedPhone
                 isAuthenticated = true
+                APNsService.shared.requestPermissionAndRegister()
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Login failed"
                 errorMessage = error
@@ -117,6 +118,7 @@ final class AuthViewModel {
                 hasRealLogin = true
                 savedPhone = trimmedPhone
                 isAuthenticated = true
+                APNsService.shared.requestPermissionAndRegister()
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Registration failed"
                 errorMessage = error
@@ -156,7 +158,48 @@ final class AuthViewModel {
         }
     }
 
+    var isDeletingAccount = false
+    var deleteAccountError = ""
+
+    func deleteAccount(password: String) async -> Bool {
+        isDeletingAccount = true
+        deleteAccountError = ""
+
+        do {
+            let token = try await DatabaseService.shared.getSetting(key: "auth_token") ?? ""
+            let url = URL(string: baseURL + "/auth/delete-account")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["password": password])
+            request.timeoutInterval = 15
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                deleteAccountError = "Server error"
+                isDeletingAccount = false
+                return false
+            }
+
+            if let ok = json["ok"] as? Bool, ok {
+                await logout()
+                isDeletingAccount = false
+                return true
+            } else {
+                deleteAccountError = json["error"] as? String ?? "Delete failed"
+                isDeletingAccount = false
+                return false
+            }
+        } catch {
+            deleteAccountError = "Network error"
+            isDeletingAccount = false
+            return false
+        }
+    }
+
     func logout() async {
+        APNsService.shared.unregisterToken()
         do {
             try await DatabaseService.shared.setSetting(key: "auth_token", value: "")
             try await DatabaseService.shared.setSetting(key: "auth_userId", value: "")

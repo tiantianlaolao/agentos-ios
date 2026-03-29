@@ -7,7 +7,7 @@ import Foundation
 final class L10n {
     static let shared = L10n()
 
-    private var locale: String = "en"
+    private(set) var locale: String = "en"
     private var translations: [String: String] = [:]
 
     // MARK: - Init
@@ -218,6 +218,8 @@ final class L10n {
         "settings.provider": "AI 服务商",
         "settings.apiKey": "API Key（密钥）",
         "settings.apiKeyPlaceholder": "输入你的 API Key",
+        "settings.desktopBannerTitle": "搭配桌面版，体验更完整",
+        "settings.desktopBannerDesc": "桌面端支持文件操作、本地工具调用等更多能力",
         "settings.language": "语言",
         "settings.model": "模型选择",
         "settings.currentMode": "当前连接",
@@ -227,6 +229,12 @@ final class L10n {
         "settings.version": "版本",
         "settings.loginOrRegister": "登录 / 注册",
         "settings.logout": "退出登录",
+        "settings.deleteAccount": "删除账号",
+        "settings.deleteAccountTitle": "删除账号",
+        "settings.deleteAccountWarning": "此操作不可撤销，将永久删除您的账号及所有数据。请输入密码确认。",
+        "settings.deleteAccountConfirm": "确认删除",
+        "settings.deleteAccountPasswordPlaceholder": "请输入密码",
+        "settings.cancel": "取消",
         "settings.loggedInAs": "已登录：{{phone}}",
         "settings.notLoggedIn": "未登录（匿名模式）",
         "settings.mode": "模式",
@@ -633,6 +641,8 @@ final class L10n {
         "settings.provider": "AI Provider",
         "settings.apiKey": "API Key",
         "settings.apiKeyPlaceholder": "Enter your API key",
+        "settings.desktopBannerTitle": "Better with Desktop",
+        "settings.desktopBannerDesc": "Desktop app supports file operations, local tools and more",
         "settings.language": "Language",
         "settings.model": "Model Selection",
         "settings.currentMode": "Active",
@@ -642,6 +652,12 @@ final class L10n {
         "settings.version": "Version",
         "settings.loginOrRegister": "Login / Register",
         "settings.logout": "Logout",
+        "settings.deleteAccount": "Delete Account",
+        "settings.deleteAccountTitle": "Delete Account",
+        "settings.deleteAccountWarning": "This action cannot be undone. All your data will be permanently deleted. Enter your password to confirm.",
+        "settings.deleteAccountConfirm": "Delete",
+        "settings.deleteAccountPasswordPlaceholder": "Enter password",
+        "settings.cancel": "Cancel",
         "settings.loggedInAs": "Logged in as {{phone}}",
         "settings.notLoggedIn": "Not logged in (anonymous mode)",
         "settings.mode": "Mode",

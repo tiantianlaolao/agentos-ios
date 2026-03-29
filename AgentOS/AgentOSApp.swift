@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct AgentOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         // Force dark mode
         setupAppearance()
@@ -19,6 +21,14 @@ struct AgentOSApp: App {
         Task {
             let bestUrl = await ServerSelector.selectBest()
             await ServerConfig.shared.update(wsUrl: bestUrl)
+        }
+
+        // Register APNs for returning users
+        Task {
+            let token = try? await DatabaseService.shared.getSetting(key: "auth_token")
+            if let token, !token.isEmpty {
+                APNsService.shared.requestPermissionAndRegister()
+            }
         }
     }
 

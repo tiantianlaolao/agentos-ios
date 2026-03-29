@@ -38,6 +38,11 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                // Desktop companion banner
+                desktopBanner
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
                 // Current mode indicator bar
                 currentModeBar
                     .padding(.horizontal, 16)
@@ -70,11 +75,15 @@ struct SettingsView: View {
                 versionInfo
                     .padding(.top, 16)
 
-                // Logout
+                // Logout & Delete Account
                 if authViewModel.isLoggedIn {
                     logoutButton
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
+
+                    deleteAccountButton
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
                         .padding(.bottom, 32)
                 } else {
                     Spacer()
@@ -149,6 +158,8 @@ struct SettingsView: View {
     // MARK: - Account Section
 
     @State private var showLoginSheet = false
+    @State private var showDeleteAccountAlert = false
+    @State private var deleteAccountPassword = ""
     @State private var showBetaAlert = false
     @State private var betaCode = ""
     @State private var betaLoading = false
@@ -919,6 +930,40 @@ struct SettingsView: View {
         .disabled(viewModel.isSaving)
     }
 
+    // MARK: - Desktop Banner
+
+    private var desktopBanner: some View {
+        Button {
+            if let url = URL(string: "https://www.tybbtech.com") {
+                UIApplication.shared.open(url)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "desktopcomputer")
+                    .font(.system(size: 22))
+                    .foregroundStyle(AppTheme.accent)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.tr("settings.desktopBannerTitle"))
+                        .font(AppTheme.bodyFont.weight(.medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(L10n.tr("settings.desktopBannerDesc"))
+                        .font(AppTheme.captionFont)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer()
+                Text("www.tybbtech.com")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.accent)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.accent)
+            }
+            .padding(14)
+            .background(AppTheme.accent.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+        }
+    }
+
     // MARK: - Version
 
     private var versionInfo: some View {
@@ -945,6 +990,35 @@ struct SettingsView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(AppTheme.error.opacity(0.3), lineWidth: 0.5)
                 )
+        }
+    }
+
+    // MARK: - Delete Account
+
+    private var deleteAccountButton: some View {
+        Button {
+            deleteAccountPassword = ""
+            showDeleteAccountAlert = true
+        } label: {
+            Text(L10n.tr("settings.deleteAccount"))
+                .font(.system(size: 14))
+                .foregroundStyle(AppTheme.textTertiary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+        }
+        .alert(L10n.tr("settings.deleteAccountTitle"), isPresented: $showDeleteAccountAlert) {
+            SecureField(L10n.tr("settings.deleteAccountPasswordPlaceholder"), text: $deleteAccountPassword)
+            Button(L10n.tr("settings.deleteAccountConfirm"), role: .destructive) {
+                Task {
+                    let success = await authViewModel.deleteAccount(password: deleteAccountPassword)
+                    if !success && !authViewModel.deleteAccountError.isEmpty {
+                        authViewModel.errorMessage = authViewModel.deleteAccountError
+                    }
+                }
+            }
+            Button(L10n.tr("settings.cancel"), role: .cancel) { }
+        } message: {
+            Text(L10n.tr("settings.deleteAccountWarning"))
         }
     }
 

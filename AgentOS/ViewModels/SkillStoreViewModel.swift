@@ -7,8 +7,17 @@ struct FeaturedSkill: Codable, Identifiable, Sendable {
     var emoji: String?
     let installCount: Int
     let audit: String
+    var locales: [String: SkillLocale]?
 
     var id: String { name }
+
+    func localizedName(language: String) -> String {
+        locales?[language]?.displayName ?? name
+    }
+
+    func localizedDescription(language: String) -> String {
+        locales?[language]?.description ?? description
+    }
 }
 
 struct CategoryInfo: Codable, Sendable {
