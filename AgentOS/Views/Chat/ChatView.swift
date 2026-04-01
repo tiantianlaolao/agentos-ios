@@ -95,6 +95,23 @@ struct ChatView: View {
                 onClose: { showSkillsPanel = false }
             )
         }
+        .sheet(isPresented: $viewModel.showVaultPassword) {
+            VaultPasswordView(
+                isSetup: viewModel.isVaultSetup,
+                errorMessage: viewModel.errorMessage,
+                onSubmit: { password, confirmPassword, isSetup in
+                    viewModel.sendVaultPassword(
+                        password: password,
+                        confirmPassword: confirmPassword,
+                        isSetup: isSetup
+                    )
+                },
+                onDismiss: {
+                    viewModel.showVaultPassword = false
+                }
+            )
+            .presentationDetents([.medium])
+        }
         .sheet(isPresented: $viewModel.showCompareSheet) {
             CompareModelSheet(
                 onSelect: { modelId, modelName in
@@ -207,9 +224,16 @@ struct ChatView: View {
 
             // Center: Title + connection status
             VStack(spacing: 1) {
-                Text("AgentOS")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppTheme.textPrimary)
+                HStack(spacing: 4) {
+                    if viewModel.isVaultMode {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AppTheme.warning)
+                    }
+                    Text(viewModel.isVaultMode ? "秘洞" : "AgentOS")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(viewModel.isVaultMode ? AppTheme.warning : AppTheme.textPrimary)
+                }
                 HStack(spacing: 4) {
                     Circle()
                         .fill(viewModel.isConnected ? AppTheme.success : AppTheme.textTertiary)
@@ -236,6 +260,13 @@ struct ChatView: View {
                 }
 
                 Menu {
+                    if viewModel.isVaultMode {
+                        Button {
+                            viewModel.lockVault()
+                        } label: {
+                            Label("锁定秘洞", systemImage: "lock")
+                        }
+                    }
                     Button {
                         Task { await viewModel.clearConversation() }
                     } label: {

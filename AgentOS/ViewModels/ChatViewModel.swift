@@ -42,6 +42,12 @@ final class ChatViewModel {
     var showCompareSheet = false
     var compareOriginalContent = ""
 
+    // Vault (Midong 秘洞) state
+    var isVaultMode = false
+    var showVaultPassword = false
+    var isVaultSetup = false
+    private var vaultClosePending = false // marks the AI's close response as vault too
+
     // Pagination
     var hasMore = true
     var isLoadingMore = false
@@ -155,12 +161,23 @@ final class ChatViewModel {
 
     private func loadMessages(conversationId: String) async {
         do {
-            let msgs = try await DatabaseService.shared.getMessagesPaginated(
-                conversationId: conversationId,
-                limit: pageSize
-            )
+            // When not in vault mode, filter out vault messages
+            let msgs: [ChatMessage]
+            let total: Int
+            if isVaultMode {
+                msgs = try await DatabaseService.shared.getMessagesPaginated(
+                    conversationId: conversationId,
+                    limit: pageSize
+                )
+                total = try await DatabaseService.shared.getMessageCount(conversationId: conversationId)
+            } else {
+                msgs = try await DatabaseService.shared.getMessagesPaginatedNonVault(
+                    conversationId: conversationId,
+                    limit: pageSize
+                )
+                total = try await DatabaseService.shared.getNonVaultMessageCount(conversationId: conversationId)
+            }
             messages = msgs
-            let total = try await DatabaseService.shared.getMessageCount(conversationId: conversationId)
             hasMore = msgs.count < total
         } catch {
             print("[ChatVM] Failed to load messages: \(error)")
@@ -175,11 +192,20 @@ final class ChatViewModel {
 
         isLoadingMore = true
         do {
-            let older = try await DatabaseService.shared.getMessagesPaginated(
-                conversationId: convId,
-                limit: pageSize,
-                beforeTimestamp: oldest.timestamp
-            )
+            let older: [ChatMessage]
+            if isVaultMode {
+                older = try await DatabaseService.shared.getMessagesPaginated(
+                    conversationId: convId,
+                    limit: pageSize,
+                    beforeTimestamp: oldest.timestamp
+                )
+            } else {
+                older = try await DatabaseService.shared.getMessagesPaginatedNonVault(
+                    conversationId: convId,
+                    limit: pageSize,
+                    beforeTimestamp: oldest.timestamp
+                )
+            }
             if older.isEmpty {
                 hasMore = false
             } else {
@@ -497,7 +523,8 @@ final class ChatViewModel {
             conversationId: convId,
             role: .user,
             content: text,
-            attachments: hasAttachments ? attachments : nil
+            attachments: hasAttachments ? attachments : nil,
+            isVault: isVaultMode
         )
         messages.append(userMsg)
         inputText = ""
@@ -556,6 +583,24 @@ final class ChatViewModel {
                 await sendOpenClaw(text: text, convId: convId)
             }
         }
+    }
+
+    // MARK: - Vault (Midong)
+
+    func sendVaultPassword(password: String, confirmPassword: String? = nil, isSetup: Bool = false) {
+        var payload: [String: Any] = ["password": password]
+        if let confirmPassword {
+            payload["confirmPassword"] = confirmPassword
+        }
+        payload["isSetup"] = isSetup
+
+        let msg = WSMessage(type: .vaultPassword, payload: AnyCodable(payload))
+        wsService.send(msg)
+    }
+
+    func lockVault() {
+        isVaultMode = false
+        messages.removeAll { $0.isVault }
     }
 
     // MARK: - Stop Generation
@@ -840,6 +885,34 @@ final class ChatViewModel {
                 handlePushMessage(content: content)
             }
 
+        case .vaultPasswordRequest:
+            if let payload = message.payload?.dictValue {
+                isVaultSetup = (payload["isFirstTime"] as? Bool) == true
+                showVaultPassword = true
+            }
+
+        case .vaultUnlocked:
+            isVaultMode = true
+            showVaultPassword = false
+            if let payload = message.payload?.dictValue,
+               let msg = payload["message"] as? String,
+               let convId = currentConversationId {
+                let vaultMsg = ChatMessage(
+                    conversationId: convId,
+                    role: .assistant,
+                    content: msg,
+                    isVault: true
+                )
+                messages.append(vaultMsg)
+                Task { try? await DatabaseService.shared.saveMessage(vaultMsg) }
+            }
+
+        case .vaultLocked:
+            isVaultMode = false
+            vaultClosePending = true
+            // Remove vault messages from the in-memory list
+            messages.removeAll { $0.isVault }
+
         case .error:
             if let payload = message.payload?.dictValue {
                 let code = payload["code"] as? String ?? ""
@@ -847,6 +920,16 @@ final class ChatViewModel {
 
                 if code == "CONNECTION_CLOSED" {
                     isConnected = false
+                    return
+                }
+
+                // Vault-specific errors: show in password sheet context (don't dismiss)
+                if code == "VAULT_WRONG_PASSWORD" || code == "VAULT_LOCKED_OUT" || code == "VAULT_ERROR" {
+                    errorMessage = msg
+                    Task {
+                        try? await Task.sleep(for: .seconds(3))
+                        if self.errorMessage == msg { self.errorMessage = nil }
+                    }
                     return
                 }
 
@@ -896,14 +979,28 @@ final class ChatViewModel {
         let compareModel = _pendingCompareModel
         _pendingCompareModel = nil
 
+        // If vault just closed, mark this response as vault too so it gets cleaned up
+        let markAsVault = isVaultMode || vaultClosePending
+        if vaultClosePending {
+            vaultClosePending = false
+        }
+
         let msg = ChatMessage(
             id: assistantId,
             conversationId: conversationId,
             role: .assistant,
             content: fullContent,
             attachments: attachments,
-            compareModel: compareModel
+            compareModel: compareModel,
+            isVault: markAsVault
         )
+
+        if markAsVault && !isVaultMode {
+            // Vault closed: don't show this message, don't persist it
+            resetStreamingState()
+            return
+        }
+
         messages.append(msg)
         Task {
             try? await DatabaseService.shared.saveMessage(msg)

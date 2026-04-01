@@ -63,6 +63,12 @@ actor DatabaseService {
             }
         }
 
+        migrator.registerMigration("v3_vault") { db in
+            try db.alter(table: "messages") { t in
+                t.add(column: "is_vault", .integer).defaults(to: 0)
+            }
+        }
+
         try migrator.migrate(dbQueue)
     }
 
@@ -178,6 +184,32 @@ actor DatabaseService {
                 _ = try ChatMessage.filter(ids.contains(Column("id"))).deleteAll(db)
             }
             return result
+        }
+    }
+
+    // MARK: - Vault Messages
+
+    func getMessagesPaginatedNonVault(conversationId: String, limit: Int, beforeTimestamp: Int? = nil) throws -> [ChatMessage] {
+        guard let dbQueue else { throw DatabaseError.notInitialized }
+        return try dbQueue.read { db in
+            var query = ChatMessage
+                .filter(Column("conversation_id") == conversationId)
+                .filter(Column("is_vault") == 0)
+            if let beforeTimestamp {
+                query = query.filter(Column("timestamp") < beforeTimestamp)
+            }
+            let rows = try query.order(Column("timestamp").desc).limit(limit).fetchAll(db)
+            return rows.reversed()
+        }
+    }
+
+    func getNonVaultMessageCount(conversationId: String) throws -> Int {
+        guard let dbQueue else { throw DatabaseError.notInitialized }
+        return try dbQueue.read { db in
+            try ChatMessage
+                .filter(Column("conversation_id") == conversationId)
+                .filter(Column("is_vault") == 0)
+                .fetchCount(db)
         }
     }
 

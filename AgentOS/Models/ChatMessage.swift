@@ -10,6 +10,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     var skillName: String?
     var attachments: [Attachment]?
     var compareModel: String?
+    var isVault: Bool
 
     enum MessageRole: String, Codable, Sendable {
         case user
@@ -24,7 +25,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         timestamp: Int = Int(Date().timeIntervalSince1970 * 1000),
         skillName: String? = nil,
         attachments: [Attachment]? = nil,
-        compareModel: String? = nil
+        compareModel: String? = nil,
+        isVault: Bool = false
     ) {
         self.id = id
         self.conversationId = conversationId
@@ -34,6 +36,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.skillName = skillName
         self.attachments = attachments
         self.compareModel = compareModel
+        self.isVault = isVault
     }
 }
 
@@ -50,6 +53,7 @@ extension ChatMessage: FetchableRecord, PersistableRecord {
         case timestamp
         case skillName = "skill_name"
         case attachments
+        case isVault = "is_vault"
     }
 
     init(row: Row) throws {
@@ -59,6 +63,7 @@ extension ChatMessage: FetchableRecord, PersistableRecord {
         content = row["content"]
         timestamp = row["timestamp"]
         skillName = row["skill_name"]
+        isVault = (row["is_vault"] as Int?) == 1
 
         if let jsonString: String = row["attachments"],
            let data = jsonString.data(using: .utf8) {
@@ -75,6 +80,7 @@ extension ChatMessage: FetchableRecord, PersistableRecord {
         container["content"] = content
         container["timestamp"] = timestamp
         container["skill_name"] = skillName
+        container["is_vault"] = isVault ? 1 : 0
 
         if let attachments = attachments {
             let data = try JSONEncoder().encode(attachments)

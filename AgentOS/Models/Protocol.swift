@@ -29,6 +29,12 @@ enum MessageType: String, Codable, Sendable {
     case skillConfigResponse = "skill.config.response"
     case error = "error"
 
+    // Vault (Midong 秘洞)
+    case vaultPasswordRequest = "vault.password.request"  // Server -> Client
+    case vaultPassword = "vault.password"                 // Client -> Server
+    case vaultUnlocked = "vault.unlocked"                 // Server -> Client
+    case vaultLocked = "vault.locked"                     // Server -> Client
+
     // Bidirectional
     case ping = "ping"
     case pong = "pong"
