@@ -21,11 +21,17 @@ enum ServerSelector {
         let http: String
     }
 
+    #if DEBUG
+    static let servers: [ServerNode] = [
+        ServerNode(name: "test", ws: "ws://agentos.tybbtech.com:3200/ws", http: "http://agentos.tybbtech.com:3200"),
+    ]
+    static let defaultWS = "ws://agentos.tybbtech.com:3200/ws"
+    #else
     static let servers: [ServerNode] = [
         ServerNode(name: "main", ws: "ws://agentos.tybbtech.com:3100/ws", http: "http://agentos.tybbtech.com:3100"),
     ]
-
     static let defaultWS = "ws://agentos.tybbtech.com:3100/ws"
+    #endif
 
     /// Ping a server and return latency in ms, or nil on failure
     static func ping(_ httpUrl: String, timeout: TimeInterval = 5) async -> Double? {
