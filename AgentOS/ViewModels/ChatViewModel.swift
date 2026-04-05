@@ -461,6 +461,9 @@ final class ChatViewModel {
     }
 
     func reconnect() {
+        // Reset streaming state so UI is not stuck in "loading" after reconnect
+        resetStreamingState()
+
         switch connectionMode {
         case .openclaw:
             if openclawProxyMode {
@@ -920,6 +923,20 @@ final class ChatViewModel {
 
                 if code == "CONNECTION_CLOSED" {
                     isConnected = false
+                    // Save any partial streaming content before resetting
+                    if let assistantId = currentAssistantId, !streamBuffer.isEmpty,
+                       let convId = currentConversationId {
+                        let msg = ChatMessage(
+                            id: assistantId,
+                            conversationId: convId,
+                            role: .assistant,
+                            content: streamBuffer
+                        )
+                        messages.append(msg)
+                        Task { try? await DatabaseService.shared.saveMessage(msg) }
+                    }
+                    cancelStreamTimeout()
+                    resetStreamingState()
                     return
                 }
 
