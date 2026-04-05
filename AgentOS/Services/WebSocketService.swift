@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 /// Connection state for the WebSocket service.
 enum WSConnectionState: Sendable, Equatable {
@@ -9,7 +10,8 @@ enum WSConnectionState: Sendable, Equatable {
 }
 
 /// WebSocket client for AgentOS server protocol.
-/// Uses URLSessionWebSocketTask with exponential backoff reconnection and heartbeat.
+/// Uses URLSessionWebSocketTask with adaptive heartbeat, exponential backoff reconnection,
+/// and network change detection.
 @MainActor
 @Observable
 final class WebSocketService {
@@ -37,6 +39,28 @@ final class WebSocketService {
     private var receiveTask: Task<Void, Never>?
     private var pongDeadlineTask: Task<Void, Never>?
 
+    // Adaptive heartbeat
+    private let networkMonitor = NWPathMonitor()
+    private var currentNetworkType: NWInterface.InterfaceType = .wifi
+    private var rttHistory: [TimeInterval] = []
+    private var lastPingSentAt: Date?
+    private var pongMissCount = 0
+
+    /// Ping interval: 10s on cellular (keep NAT alive), 25s on WiFi.
+    private var pingInterval: TimeInterval {
+        currentNetworkType == .cellular ? 10.0 : 25.0
+    }
+
+    /// Pong timeout: adapts to measured RTT; more generous on cellular.
+    private var pongTimeout: TimeInterval {
+        if rttHistory.count >= 3 {
+            let recent = Array(rttHistory.suffix(10))
+            let avg = recent.reduce(0, +) / Double(recent.count)
+            return min(max(avg * 3, 5.0), 20.0)
+        }
+        return currentNetworkType == .cellular ? 20.0 : 15.0
+    }
+
     private var lastMode: ConnectionMode?
     private var lastOptions: ConnectOptions?
     private var intentionalDisconnect = false
@@ -63,6 +87,39 @@ final class WebSocketService {
     init(url: String? = nil) {
         self.serverURL = url ?? ServerConfig.shared.wsURL
         self.session = URLSession(configuration: .default)
+        startNetworkMonitor()
+    }
+
+    deinit {
+        networkMonitor.cancel()
+    }
+
+    // MARK: - Network monitoring
+
+    private func startNetworkMonitor() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let newType: NWInterface.InterfaceType
+                if path.usesInterfaceType(.wifi) {
+                    newType = .wifi
+                } else if path.usesInterfaceType(.cellular) {
+                    newType = .cellular
+                } else {
+                    newType = .other
+                }
+                if newType != self.currentNetworkType {
+                    print("[WS] Network changed: \(self.currentNetworkType) → \(newType)")
+                    self.currentNetworkType = newType
+                    self.rttHistory.removeAll()
+                    // Reconnect immediately on network change
+                    if !self.intentionalDisconnect, let mode = self.lastMode {
+                        self.connect(mode: mode, options: self.lastOptions ?? ConnectOptions())
+                    }
+                }
+            }
+        }
+        networkMonitor.start(queue: DispatchQueue(label: "ws.network"))
     }
 
     // MARK: - Public API
@@ -215,10 +272,16 @@ final class WebSocketService {
             return
         }
 
-        // Handle PONG — cancel deadline
+        // Handle PONG — cancel deadline and track RTT
         if message.type == .pong {
             pongDeadlineTask?.cancel()
             pongDeadlineTask = nil
+            pongMissCount = 0
+            if let sentAt = lastPingSentAt {
+                let rtt = Date().timeIntervalSince(sentAt)
+                rttHistory.append(rtt)
+                if rttHistory.count > 20 { rttHistory.removeFirst() }
+            }
         }
 
         // Handle connected
@@ -254,28 +317,42 @@ final class WebSocketService {
         scheduleReconnect()
     }
 
-    // MARK: - Heartbeat
+    // MARK: - Adaptive Heartbeat
 
     private func startPing() {
         stopPing()
         pingTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(25))
+                guard let self else { break }
+                let interval = await MainActor.run { self.pingInterval }
+                try? await Task.sleep(for: .seconds(interval))
                 guard !Task.isCancelled, let self else { break }
-                let pingMsg = WSMessage(type: .ping)
-                await MainActor.run { self.send(pingMsg) }
+                await MainActor.run { self.sendPingWithDeadline() }
+            }
+        }
+    }
 
-                // Set pong deadline
-                await MainActor.run {
-                    self.pongDeadlineTask?.cancel()
-                    self.pongDeadlineTask = Task { [weak self] in
-                        try? await Task.sleep(for: .seconds(15))
-                        guard !Task.isCancelled, let self else { return }
-                        print("[WS] Pong timeout — closing connection")
-                        await MainActor.run {
-                            self.webSocketTask?.cancel(with: .goingAway, reason: nil)
-                        }
-                    }
+    /// Send a ping and set an adaptive pong deadline. On first timeout, retries once.
+    private func sendPingWithDeadline() {
+        lastPingSentAt = Date()
+        send(WSMessage(type: .ping))
+
+        let timeout = pongTimeout
+        pongDeadlineTask?.cancel()
+        pongDeadlineTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(timeout))
+            guard !Task.isCancelled, let self else { return }
+            await MainActor.run {
+                if self.pongMissCount < 1 {
+                    // First timeout: retry once before giving up
+                    self.pongMissCount += 1
+                    print("[WS] Pong timeout (\(Int(timeout))s) — retry ping")
+                    self.sendPingWithDeadline()
+                } else {
+                    // Second consecutive timeout: close connection
+                    print("[WS] Pong timeout after retry — closing connection")
+                    self.pongMissCount = 0
+                    self.webSocketTask?.cancel(with: .goingAway, reason: nil)
                 }
             }
         }
@@ -286,6 +363,7 @@ final class WebSocketService {
         pingTask = nil
         pongDeadlineTask?.cancel()
         pongDeadlineTask = nil
+        pongMissCount = 0
     }
 
     // MARK: - Reconnection
