@@ -326,7 +326,7 @@ final class WebSocketService {
                 guard let self else { break }
                 let interval = await MainActor.run { self.pingInterval }
                 try? await Task.sleep(for: .seconds(interval))
-                guard !Task.isCancelled, let self else { break }
+                guard !Task.isCancelled else { break }
                 await MainActor.run { self.sendPingWithDeadline() }
             }
         }
