@@ -4,10 +4,13 @@ import Foundation
 /// Uses the saved "locale" setting from DatabaseService, falling back to the
 /// system's preferred language.
 @MainActor
+@Observable
 final class L10n {
     static let shared = L10n()
 
     private(set) var locale: String = "en"
+    /// Incremented on every locale change — observe this to trigger UI refresh.
+    var version: Int = 0
     private var translations: [String: String] = [:]
 
     // MARK: - Init
@@ -37,8 +40,15 @@ final class L10n {
 
     /// Reload locale from DatabaseService (call on app launch / settings change)
     func loadLocale() async {
-        if let saved = try? await DatabaseService.shared.getSetting(key: "locale"),
+        let db = DatabaseService.shared
+        // Try user-specific key first (SettingsViewModel saves with userId prefix)
+        let userId = (try? await db.getSetting(key: "auth_userId")) ?? ""
+        let userKey = userId.isEmpty ? "locale" : "\(userId):locale"
+        if let saved = try? await db.getSetting(key: userKey),
            !saved.isEmpty {
+            locale = saved
+        } else if let saved = try? await db.getSetting(key: "locale"),
+                  !saved.isEmpty {
             locale = saved
         } else {
             let systemLang = Locale.preferredLanguages.first ?? "en"
@@ -51,6 +61,7 @@ final class L10n {
     func setLocale(_ loc: String) {
         locale = loc
         translations = loc == "zh" ? Self.zh : Self.en
+        version += 1
     }
 
     // MARK: - Chinese Dictionary
@@ -69,7 +80,7 @@ final class L10n {
         "chat.thinking": "思考中...",
         "chat.skillRunning": "正在执行技能: {{name}}",
         "chat.connectionLost": "连接已断开，正在重连...",
-        "chat.welcome": "你好！我是 AgentOS 助理，有什么可以帮你的？",
+        "chat.welcome": "你好！我是灵犀，有什么可以帮你的？",
         "chat.history": "会话记录",
         "chat.noConversations": "暂无会话记录",
         "chat.deleteConfirm": "确定删除这个会话吗？",
@@ -113,15 +124,48 @@ final class L10n {
         "chat.streamTimeout": "响应超时，请重新发送。",
         "chat.loadMore": "上滑加载更多",
         "chat.clearChat": "清空对话",
+        "chat.appName": "灵犀",
+        "chat.vaultName": "秘洞",
+        "chat.proactiveLabel": "灵犀 主动找你",
+        "chat.companionDays": "陪伴你第 {{days}} 天",
         "chat.disconnected": "连接已断开，点击重连",
         "chat.compare": "换个模型",
+
+        // today screen
+        "today.morning": "早上好",
+        "today.noon": "中午好",
+        "today.afternoon": "下午好",
+        "today.evening": "晚上好",
+        "today.lateNight": "夜深了",
+        "today.question": "今天有什么要做的吗？",
+        "today.justChat": "随便聊聊",
+        "today.suggestWeather": "查看今天天气",
+        "today.suggestNews": "看今日新闻",
+        "today.suggestEmail": "查看新邮件",
+        "today.suggestReminder": "设个提醒",
+        "today.suggestSearch": "搜索一下",
+        "today.suggestTomorrow": "规划明天的安排",
+        "today.msgWeather": "今天天气怎么样？",
+        "today.msgNews": "帮我看看今天有什么重要新闻",
+        "today.msgEmail": "帮我查看最近的邮件",
+        "today.msgReminder": "帮我设一个提醒",
+        "today.msgSearch": "帮我搜索一下",
+        "today.msgTomorrow": "帮我规划一下明天的安排",
+        "today.weather": "今天天气",
+        "today.todayLabel": "今天",
+        "today.tempMin": "最低",
+        "today.tempMax": "最高",
+        "today.humidity": "湿度",
+        "today.wind": "风力",
+        "today.setCity": "告诉灵犀你在哪个城市",
+        "today.msgSetCity": "请帮我记住我在哪个城市",
         "chat.compareWith": "用 {{model}} 回答",
         "chat.compareLabel": "对比回复",
         "chat.compareLimitReached": "今日对比次数已用完",
         "chat.selectModel": "选择模型",
 
         // login
-        "login.title": "欢迎使用 AgentOS",
+        "login.title": "欢迎使用灵犀",
         "login.loginTab": "登录",
         "login.registerTab": "注册",
         "login.phone": "手机号",
@@ -136,8 +180,12 @@ final class L10n {
         "login.passwordMismatch": "两次密码不一致",
         "login.phoneRequired": "请输入手机号",
         "login.invalidPhone": "手机号格式不正确",
+        "login.agreeTerms": "我已阅读并同意",
+        "login.and": "和",
 
         // settings
+        "settings.userAgreement": "用户协议",
+        "settings.privacyPolicy": "隐私政策",
         "settings.title": "设置",
         "settings.connectionMode": "连接模式",
         "settings.builtin": "Agent小助手",
@@ -172,7 +220,7 @@ final class L10n {
         "settings.copawDeployModel": "模型",
         "settings.copawDeployModelPlaceholder": "输入模型名称",
         "settings.agent": "Agent（OpenClaw等）",
-        "settings.agentDesc": "连接 OpenClaw / CoPaw 等外部 AI Agent",
+        "settings.agentDesc": "连接 OpenClaw 等外部 AI Agent",
         "settings.agentSubMode": "连接方式",
         "settings.agentDirect": "直连",
         "settings.agentDirectDesc": "直接连接你的 Agent 实例",
@@ -260,9 +308,10 @@ final class L10n {
         "settings.betaFailed": "激活失败",
 
         // memory
-        "memory.title": "记忆",
+        "memory.title": "灵犀对你的了解",
+        "memory.subtitle": "已陪伴你 {{days}} 天",
         "memory.empty": "暂无记忆。助理会在这里记住与你相关的信息。",
-        "memory.edit": "编辑",
+        "memory.edit": "+ 告诉灵犀更多关于你",
         "memory.save": "保存",
         "memory.cancel": "取消",
         "memory.saving": "保存中...",
@@ -273,7 +322,7 @@ final class L10n {
         "memory.saveSuccess": "记忆已保存",
         "memory.saveFailed": "保存记忆失败",
         "memory.loadFailed": "加载记忆失败",
-        "memory.noContent": "暂无记忆内容。AI 会随时间了解你的偏好，你也可以手动编辑。",
+        "memory.noContent": "灵犀还在了解你，和它多聊聊吧",
         "memory.updated": "更新: {{time}}",
         "memory.characters": "{{count}} 字",
 
@@ -492,7 +541,7 @@ final class L10n {
         "chat.thinking": "Thinking...",
         "chat.skillRunning": "Running skill: {{name}}",
         "chat.connectionLost": "Connection lost. Reconnecting...",
-        "chat.welcome": "Hello! I am AgentOS Assistant. How can I help you?",
+        "chat.welcome": "Hello! I am LingXi. How can I help you?",
         "chat.history": "Conversations",
         "chat.noConversations": "No conversations yet",
         "chat.deleteConfirm": "Delete this conversation?",
@@ -536,15 +585,48 @@ final class L10n {
         "chat.streamTimeout": "Response timed out. Please try again.",
         "chat.loadMore": "Scroll up to load more",
         "chat.clearChat": "Clear Chat",
+        "chat.appName": "LingXi",
+        "chat.vaultName": "Vault",
+        "chat.proactiveLabel": "LingXi reached out",
+        "chat.companionDays": "Day {{days}} together",
         "chat.disconnected": "Disconnected. Tap to reconnect.",
         "chat.compare": "Compare",
+
+        // today screen
+        "today.morning": "Good morning",
+        "today.noon": "Good afternoon",
+        "today.afternoon": "Good afternoon",
+        "today.evening": "Good evening",
+        "today.lateNight": "Late night",
+        "today.question": "What would you like to do today?",
+        "today.justChat": "Just chat",
+        "today.suggestWeather": "Check today's weather",
+        "today.suggestNews": "Read today's news",
+        "today.suggestEmail": "Check new emails",
+        "today.suggestReminder": "Set a reminder",
+        "today.suggestSearch": "Search something",
+        "today.suggestTomorrow": "Plan for tomorrow",
+        "today.msgWeather": "How's the weather today?",
+        "today.msgNews": "What's the important news today?",
+        "today.msgEmail": "Check my recent emails",
+        "today.msgReminder": "Help me set a reminder",
+        "today.msgSearch": "Help me search for something",
+        "today.msgTomorrow": "Help me plan for tomorrow",
+        "today.weather": "Today's Weather",
+        "today.todayLabel": "Today",
+        "today.tempMin": "Low",
+        "today.tempMax": "High",
+        "today.humidity": "Humidity",
+        "today.wind": "Wind",
+        "today.setCity": "Tell LingXi your city",
+        "today.msgSetCity": "Please remember which city I'm in",
         "chat.compareWith": "Answer with {{model}}",
         "chat.compareLabel": "Compare reply",
         "chat.compareLimitReached": "Daily compare limit reached",
         "chat.selectModel": "Select model",
 
         // login
-        "login.title": "Welcome to AgentOS",
+        "login.title": "Welcome to LingXi",
         "login.loginTab": "Login",
         "login.registerTab": "Register",
         "login.phone": "Phone Number",
@@ -559,8 +641,12 @@ final class L10n {
         "login.passwordMismatch": "Passwords do not match",
         "login.phoneRequired": "Please enter your phone number",
         "login.invalidPhone": "Invalid phone number format",
+        "login.agreeTerms": "I agree to the",
+        "login.and": "and",
 
         // settings
+        "settings.userAgreement": "User Agreement",
+        "settings.privacyPolicy": "Privacy Policy",
         "settings.title": "Settings",
         "settings.connectionMode": "Connection Mode",
         "settings.builtin": "Agent Helper",
@@ -595,7 +681,7 @@ final class L10n {
         "settings.copawDeployModel": "Model",
         "settings.copawDeployModelPlaceholder": "Enter model name",
         "settings.agent": "Agent (OpenClaw etc.)",
-        "settings.agentDesc": "Connect to OpenClaw / CoPaw and other AI Agents",
+        "settings.agentDesc": "Connect to OpenClaw and other AI Agents",
         "settings.agentSubMode": "Connection Mode",
         "settings.agentDirect": "Direct",
         "settings.agentDirectDesc": "Connect directly to your Agent instance",
@@ -683,9 +769,10 @@ final class L10n {
         "settings.betaFailed": "Activation failed",
 
         // memory
-        "memory.title": "Memory",
+        "memory.title": "What LingXi Knows",
+        "memory.subtitle": "Day {{days}} together",
         "memory.empty": "No memories yet. Your assistant will remember things here.",
-        "memory.edit": "Edit",
+        "memory.edit": "+ Tell LingXi more about you",
         "memory.save": "Save",
         "memory.cancel": "Cancel",
         "memory.saving": "Saving...",
@@ -696,7 +783,7 @@ final class L10n {
         "memory.saveSuccess": "Memory saved",
         "memory.saveFailed": "Failed to save memory",
         "memory.loadFailed": "Failed to load memory",
-        "memory.noContent": "No memory content yet. The AI will learn your preferences over time, or you can edit manually.",
+        "memory.noContent": "LingXi is still getting to know you. Chat more!",
         "memory.updated": "Updated: {{time}}",
         "memory.characters": "{{count}} characters",
 

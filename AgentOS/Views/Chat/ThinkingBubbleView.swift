@@ -4,16 +4,9 @@ struct ThinkingBubbleView: View {
     @State private var phase: CGFloat = 0
 
     var body: some View {
-        HStack(alignment: .top, spacing: AppTheme.paddingMedium) {
-            // Avatar
-            Circle()
-                .fill(AppTheme.surfaceLight)
-                .frame(width: 28, height: 28)
-                .overlay {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 14))
-                        .foregroundStyle(AppTheme.primary)
-                }
+        HStack(alignment: .bottom, spacing: 6) {
+            // Avatar - thinking state
+            AssistantAvatarView(size: .small, state: .thinking, animated: true)
 
             // Bubble with dots
             HStack(spacing: 6) {
@@ -27,11 +20,16 @@ struct ThinkingBubbleView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(AppTheme.assistantBubble)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .clipShape(BubbleShape(isUser: false))
+            .overlay(
+                BubbleShape(isUser: false)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
 
             Spacer(minLength: 60)
         }
-        .padding(.horizontal, AppTheme.paddingLarge)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 1)
         .onAppear {
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
                 phase = 1

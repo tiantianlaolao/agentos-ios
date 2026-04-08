@@ -6,6 +6,7 @@ struct MessageBubbleView: View {
     let onCopy: () -> Void
     let onDelete: () -> Void
     var onCompare: ((String) -> Void)?
+    var showAvatar: Bool = false
 
     @State private var selectedImageURL: URL?
 
@@ -14,8 +15,18 @@ struct MessageBubbleView: View {
     var body: some View {
         let isUser = message.role == .user
 
-        HStack(alignment: .bottom, spacing: 0) {
+        HStack(alignment: .bottom, spacing: 6) {
             if isUser { Spacer(minLength: 60) }
+
+            // Assistant avatar
+            if !isUser {
+                if showAvatar {
+                    let avatarState: AvatarState = message.skillName == "push" ? .proactive : .idle
+                    AssistantAvatarView(size: .small, state: avatarState, animated: false)
+                } else {
+                    Color.clear.frame(width: 32, height: 32)
+                }
+            }
 
             bubbleContent(isUser: isUser)
 
@@ -102,7 +113,13 @@ struct MessageBubbleView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(AppTheme.userBubble)
+            .background(
+                LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.primaryDark],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .clipShape(BubbleShape(isUser: true))
         } else if isError {
             HStack(spacing: 4) {
@@ -117,6 +134,48 @@ struct MessageBubbleView: View {
             .padding(.vertical, 8)
             .background(AppTheme.error.opacity(0.1))
             .clipShape(BubbleShape(isUser: false))
+        } else if message.skillName == "push" {
+            // Proactive push bubble
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.tr("chat.proactiveLabel"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color(hex: "#C4845A"))
+                attachmentViews(isUser: false)
+                if !message.content.isEmpty {
+                    SelectableContentView(content: message.content)
+                }
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Text(timeStr)
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
+                    actionIcons(isUser: false)
+                }
+                .padding(.top, 2)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: "#FFF8F0"), Color(hex: "#FEF3EA")],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .clipShape(BubbleShape(isUser: false))
+            .overlay(
+                BubbleShape(isUser: false)
+                    .stroke(Color(hex: "#F0DECE"), lineWidth: 1)
+            )
+            .overlay(
+                HStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 1.25)
+                        .fill(AppTheme.primary)
+                        .frame(width: 2.5)
+                        .padding(.vertical, 6)
+                    Spacer()
+                }
+            )
         } else {
             // Assistant bubble - attachments + markdown + time inside
             VStack(alignment: .leading, spacing: 4) {
@@ -150,6 +209,10 @@ struct MessageBubbleView: View {
             .padding(.vertical, 8)
             .background(AppTheme.assistantBubble)
             .clipShape(BubbleShape(isUser: false))
+            .overlay(
+                BubbleShape(isUser: false)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
         }
     }
 }
@@ -288,9 +351,16 @@ struct BubbleShape: Shape {
 
 struct StreamingBubbleView: View {
     let content: String
+    var showAvatar: Bool = false
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 0) {
+        HStack(alignment: .bottom, spacing: 6) {
+            if showAvatar {
+                AssistantAvatarView(size: .small, animated: false)
+            } else {
+                Color.clear.frame(width: 32, height: 32)
+            }
+
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .bottom, spacing: 0) {
                     Markdown(content)
@@ -302,6 +372,10 @@ struct StreamingBubbleView: View {
             .padding(.vertical, 8)
             .background(AppTheme.assistantBubble)
             .clipShape(BubbleShape(isUser: false))
+            .overlay(
+                BubbleShape(isUser: false)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
 
             Spacer(minLength: 60)
         }
@@ -340,7 +414,8 @@ enum MarkdownThemeProvider {
         .code {
             FontFamilyVariant(.monospaced)
             FontSize(14)
-            ForegroundColor(AppTheme.accent)
+            ForegroundColor(Color(hex: "#2D2620"))
+            BackgroundColor(AppTheme.surfaceLight)
         }
         .link {
             ForegroundColor(AppTheme.primaryLight)
@@ -382,7 +457,7 @@ enum MarkdownThemeProvider {
                     }
                     .padding(10)
             }
-            .background(Color(hex: "#0D0D0D"))
+            .background(AppTheme.surfaceLight)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .markdownMargin(top: 4, bottom: 4)
         }

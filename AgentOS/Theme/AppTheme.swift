@@ -1,31 +1,32 @@
 import SwiftUI
 
 enum AppTheme {
-    // MARK: - Colors (Dark theme, matching Android)
+    // MARK: - Colors (Warm white theme)
 
-    static let background = Color(hex: "#0A0A0A")
-    static let surface = Color(hex: "#1A1A1A")
-    static let surfaceLight = Color(hex: "#2A2A2A")
-    static let surfaceLighter = Color(hex: "#333333")
+    static let background = Color(hex: "#FAF8F5")
+    static let surface = Color(hex: "#FFFFFF")
+    static let surfaceLight = Color(hex: "#F5F1EC")
+    static let surfaceLighter = Color(hex: "#F5F1EC")
 
-    static let primary = Color(hex: "#6366F1")      // Indigo
-    static let primaryLight = Color(hex: "#818CF8")
-    static let primaryDark = Color(hex: "#4F46E5")
+    static let primary = Color(hex: "#F4A56A")      // Warm orange
+    static let primaryLight = Color(hex: "#F4B07A")
+    static let primaryDark = Color(hex: "#E8845A")
 
     static let accent = Color(hex: "#22D3EE")        // Cyan
+    static let textBrand = Color(hex: "#C4845A")     // Brand text color
     static let success = Color(hex: "#22C55E")       // Green
     static let warning = Color(hex: "#F59E0B")       // Amber
     static let error = Color(hex: "#EF4444")         // Red
 
-    static let textPrimary = Color(hex: "#F5F5F5")
-    static let textSecondary = Color(hex: "#9CA3AF")
-    static let textTertiary = Color(hex: "#6B7280")
+    static let textPrimary = Color(hex: "#1E1810")
+    static let textSecondary = Color(hex: "#2D2620")
+    static let textTertiary = Color(hex: "#A09080")
 
-    static let border = Color(hex: "#333333")
-    static let divider = Color(hex: "#262626")
+    static let border = Color(hex: "#EDE8E2")
+    static let divider = Color(hex: "#EDE8E2")
 
-    static let userBubble = Color(hex: "#6366F1")
-    static let assistantBubble = Color(hex: "#1E1E1E")
+    static let userBubble = Color(hex: "#F4A56A")
+    static let assistantBubble = Color(hex: "#FFFFFF")
 
     // MARK: - Dimensions
 

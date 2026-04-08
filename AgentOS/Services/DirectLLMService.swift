@@ -26,7 +26,7 @@ final class DirectLLMService: Sendable {
     ]
 
     private static let systemPrompt =
-        "You are AgentOS Assistant, a helpful AI assistant. " +
+        "You are LingXi, a helpful AI assistant. " +
         "Keep responses concise and helpful. Respond in the same language the user uses."
 
     // MARK: - Public API

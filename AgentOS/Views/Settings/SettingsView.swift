@@ -15,19 +15,10 @@ struct SettingsView: View {
 
     private let models: [(key: String, label: String)] = [
         ("deepseek", "DeepSeek"),
-        ("moonshot", "Kimi (Moonshot)"),
-        ("anthropic", "Claude (Anthropic)"),
     ]
 
     private let providers: [(key: LLMProvider, label: String)] = [
         (.deepseek, "DeepSeek"),
-        (.openai, "OpenAI"),
-        (.anthropic, "Anthropic"),
-        (.gemini, "Google Gemini"),
-        (.moonshot, "Moonshot (Kimi)"),
-        (.qwen, "Qwen (通义千问)"),
-        (.zhipu, "Z.AI (智谱 GLM)"),
-        (.openrouter, "OpenRouter"),
     ]
 
     private let languages: [(key: String, label: String)] = [
@@ -137,7 +128,6 @@ struct SettingsView: View {
             }
             if viewModel.mode == .agent {
                 let agentLabel = viewModel.agentId == "openclaw" ? "OpenClaw" :
-                                 viewModel.agentId == "copaw" ? "CoPaw" :
                                  L10n.tr("settings.agentCustom")
                 Text("(\(agentLabel))")
                     .font(.system(size: 11))
@@ -385,174 +375,18 @@ struct SettingsView: View {
 
     private var agentConfig: some View {
         VStack(spacing: 0) {
-            // Sub-mode: Direct vs Deploy
-            settingsSection(header: L10n.tr("settings.agentSubMode")) {
-                VStack(spacing: 0) {
-                    subModeRow(
-                        title: L10n.tr("settings.agentDirect"),
-                        subtitle: L10n.tr("settings.agentDirectDesc"),
-                        selected: viewModel.agentSubMode == "direct",
-                        isLast: false
-                    ) {
-                        viewModel.agentSubMode = "direct"
-                    }
-                    Divider().background(AppTheme.divider).padding(.leading, 52)
-                    subModeRow(
-                        title: L10n.tr("settings.agentDeploy"),
-                        subtitle: L10n.tr("settings.agentDeployDesc"),
-                        selected: viewModel.agentSubMode == "deploy",
-                        isLast: true
-                    ) {
-                        viewModel.agentSubMode = "deploy"
-                    }
-                }
+            // Deploy mode only (direct connect removed)
+            HStack {
+                Image(systemName: "desktopcomputer")
+                    .font(.system(size: 14))
+                    .foregroundStyle(AppTheme.textTertiary)
+                Text(L10n.tr("settings.agentDeployHint"))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
             }
-
-            if viewModel.agentSubMode == "direct" {
-                // Agent selection cards
-                settingsSection(header: L10n.tr("settings.agentSelection")) {
-                    VStack(spacing: 0) {
-                        agentSelectionRow(
-                            title: "OpenClaw",
-                            icon: "bolt.fill",
-                            color: Color(hex: "#c26a1b"),
-                            selected: viewModel.agentId == "openclaw",
-                            isLast: false
-                        ) {
-                            viewModel.agentId = "openclaw"
-                        }
-                        Divider().background(AppTheme.divider).padding(.leading, 52)
-                        agentSelectionRow(
-                            title: "CoPaw",
-                            icon: "pawprint.fill",
-                            color: Color(hex: "#1b6bc2"),
-                            selected: viewModel.agentId == "copaw",
-                            isLast: false
-                        ) {
-                            checkBetaAndSelect(agentId: "copaw")
-                        }
-                        Divider().background(AppTheme.divider).padding(.leading, 52)
-                        agentSelectionRow(
-                            title: L10n.tr("settings.agentCustom"),
-                            icon: "puzzlepiece.fill",
-                            color: AppTheme.textTertiary,
-                            selected: viewModel.agentId == "custom",
-                            isLast: true
-                        ) {
-                            checkBetaAndSelect(agentId: "custom")
-                        }
-                    }
-                }
-
-                // Custom agent - coming soon
-                if viewModel.agentId == "custom" {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppTheme.textTertiary)
-                        Text(L10n.tr("settings.agentCustomComingSoon"))
-                            .font(.system(size: 13))
-                            .foregroundStyle(AppTheme.textTertiary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                } else {
-                    // Direct target: Local Computer vs Remote Server
-                    settingsSection(header: L10n.tr("settings.agentConnection")) {
-                        VStack(spacing: 0) {
-                            subModeRow(
-                                title: L10n.tr("settings.directLocalComputer"),
-                                subtitle: "",
-                                selected: viewModel.directTarget == "local",
-                                isLast: false
-                            ) {
-                                viewModel.directTarget = "local"
-                            }
-                            Divider().background(AppTheme.divider).padding(.leading, 52)
-                            subModeRow(
-                                title: L10n.tr("settings.directRemoteServer"),
-                                subtitle: "",
-                                selected: viewModel.directTarget == "remote",
-                                isLast: true
-                            ) {
-                                viewModel.directTarget = "remote"
-                            }
-                        }
-                    }
-
-                    if viewModel.directTarget == "local" {
-                        // Local: show hint text, no URL/Token fields
-                        HStack {
-                            Image(systemName: "desktopcomputer")
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppTheme.textTertiary)
-                            Text(L10n.tr("settings.directLocalMobileHint"))
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    } else {
-                        // Remote: show URL + Token fields
-                        if viewModel.agentId == "openclaw" {
-                            settingsSection(header: "") {
-                                VStack(spacing: 0) {
-                                    textFieldRow(
-                                        icon: "link",
-                                        label: L10n.tr("settings.agentUrlLabel"),
-                                        placeholder: "ws://your-server:18789",
-                                        text: $viewModel.agentUrl,
-                                        isSecure: false
-                                    )
-                                    Divider().background(AppTheme.divider).padding(.leading, 52)
-                                    textFieldRow(
-                                        icon: "lock.fill",
-                                        label: "Token",
-                                        placeholder: L10n.tr("settings.agentTokenPlaceholder"),
-                                        text: $viewModel.agentToken,
-                                        isSecure: true
-                                    )
-                                }
-                            }
-                        } else if viewModel.agentId == "copaw" {
-                            settingsSection(header: "") {
-                                VStack(spacing: 0) {
-                                    textFieldRow(
-                                        icon: "link",
-                                        label: L10n.tr("settings.agentUrlLabel"),
-                                        placeholder: "http://your-server:8088/agent",
-                                        text: $viewModel.agentUrl,
-                                        isSecure: false
-                                    )
-                                    Divider().background(AppTheme.divider).padding(.leading, 52)
-                                    textFieldRow(
-                                        icon: "lock.fill",
-                                        label: "Token",
-                                        placeholder: L10n.tr("settings.agentTokenOptionalPlaceholder"),
-                                        text: $viewModel.agentToken,
-                                        isSecure: true
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Deploy sub-mode
-                HStack {
-                    Image(systemName: "desktopcomputer")
-                        .font(.system(size: 14))
-                        .foregroundStyle(AppTheme.textTertiary)
-                    Text(L10n.tr("settings.agentDeployHint"))
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
     }
 
@@ -897,7 +731,6 @@ struct SettingsView: View {
             selected: viewModel.locale
         ) {
             viewModel.locale = $0
-            L10n.shared.setLocale($0)
         }
     }
 
@@ -967,10 +800,32 @@ struct SettingsView: View {
     // MARK: - Version
 
     private var versionInfo: some View {
-        Text("AgentOS iOS v1.0.0")
-            .font(.system(size: 12))
-            .foregroundStyle(AppTheme.textTertiary)
-            .frame(maxWidth: .infinity)
+        let isZh = L10n.shared.locale == "zh"
+        let agreementURL = isZh
+            ? "https://www.tybbtech.com/zh/user-agreement"
+            : "https://www.tybbtech.com/en/user-agreement"
+        let privacyURL = isZh
+            ? "https://www.tybbtech.com/zh/privacy-policy"
+            : "https://www.tybbtech.com/en/privacy-policy"
+
+        return VStack(spacing: 6) {
+            Text("AgentOS iOS v1.0.0")
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.textTertiary)
+
+            HStack(spacing: 0) {
+                Link(L10n.tr("settings.userAgreement"), destination: URL(string: agreementURL)!)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.textBrand)
+                Text(" · ")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.textTertiary)
+                Link(L10n.tr("settings.privacyPolicy"), destination: URL(string: privacyURL)!)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.textBrand)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Logout

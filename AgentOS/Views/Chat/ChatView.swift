@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
+    var authViewModel: AuthViewModel
 
     @FocusState private var inputFocused: Bool
     @State private var showSkillsPanel = false
@@ -16,6 +17,7 @@ struct ChatView: View {
     @State private var showFilePicker = false
     @State private var isUploading = false
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showTodayScreen = false
 
     var body: some View {
         ZStack {
@@ -49,8 +51,24 @@ struct ChatView: View {
                         reconnectBanner
                     }
 
-                    // Message list
-                    messageList
+                    // Today screen or message list
+                    if showTodayScreen {
+                        TodayScreenView(
+                            companionDays: authViewModel.companionDays,
+                            onSuggestionTap: { message in
+                                dismissTodayScreen()
+                                viewModel.inputText = message
+                                Task { await viewModel.sendMessage() }
+                            },
+                            onChatTap: {
+                                dismissTodayScreen()
+                                inputFocused = true
+                            }
+                        )
+                        .transition(.opacity)
+                    } else {
+                        messageList
+                    }
 
                     // Active skill card
                     if let skill = viewModel.activeSkill {
@@ -85,6 +103,7 @@ struct ChatView: View {
         }
         .task {
             await L10n.shared.loadLocale()
+            await checkTodayScreen()
             await viewModel.connect()
         }
         .sheet(isPresented: $showSkillsPanel) {
@@ -222,7 +241,7 @@ struct ChatView: View {
 
             Spacer()
 
-            // Center: Title + connection status
+            // Center: Title + companion days + connection status
             VStack(spacing: 1) {
                 HStack(spacing: 4) {
                     if viewModel.isVaultMode {
@@ -230,9 +249,14 @@ struct ChatView: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppTheme.warning)
                     }
-                    Text(viewModel.isVaultMode ? "秘洞" : "AgentOS")
+                    Text(viewModel.isVaultMode ? L10n.tr("chat.vaultName") : L10n.tr("chat.appName"))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(viewModel.isVaultMode ? AppTheme.warning : AppTheme.textPrimary)
+                }
+                if let days = authViewModel.companionDays {
+                    Text(L10n.tr("chat.companionDays", ["days": "\(days)"]))
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textBrand)
                 }
                 HStack(spacing: 4) {
                     Circle()
@@ -343,13 +367,17 @@ struct ChatView: View {
                             onCompare: viewModel.connectionMode == .builtin ? { content in
                                 viewModel.compareOriginalContent = content
                                 viewModel.showCompareSheet = true
-                            } : nil
+                            } : nil,
+                            showAvatar: message.role == .assistant && isFirstInAssistantGroup(at: index)
                         )
                     }
 
                     // Streaming content
                     if let streaming = viewModel.streamingContent, !streaming.isEmpty {
-                        StreamingBubbleView(content: streaming)
+                        StreamingBubbleView(
+                            content: streaming,
+                            showAvatar: viewModel.messages.last?.role != .assistant
+                        )
                     } else if viewModel.isStreaming && viewModel.streamingContent == nil {
                         ThinkingBubbleView()
                     }
@@ -433,6 +461,12 @@ struct ChatView: View {
         Task { await viewModel.sendMessage(attachments: atts) }
     }
 
+    private func isFirstInAssistantGroup(at index: Int) -> Bool {
+        guard index >= 0 && index < viewModel.messages.count else { return false }
+        if index == 0 { return true }
+        return viewModel.messages[index - 1].role != .assistant
+    }
+
     private func shouldShowDateSeparator(at index: Int) -> Bool {
         guard index > 0 else { return true }
         let current = Date.fromTimestamp(viewModel.messages[index].timestamp)
@@ -447,6 +481,26 @@ struct ChatView: View {
         case .copaw: "CoPaw"
         case .agent: L10n.tr("chat.tabAgent")
         case .byok: "BYOK"
+        }
+    }
+
+    // MARK: - Today Screen
+
+    private func checkTodayScreen() async {
+        let todayStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        let lastGreeting = try? await DatabaseService.shared.getSetting(key: "lastGreetingDate")
+        if lastGreeting != todayStr {
+            showTodayScreen = true
+        }
+    }
+
+    private func dismissTodayScreen() {
+        withAnimation(.easeOut(duration: 0.3)) {
+            showTodayScreen = false
+        }
+        let todayStr = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        Task {
+            try? await DatabaseService.shared.setSetting(key: "lastGreetingDate", value: todayStr)
         }
     }
 }

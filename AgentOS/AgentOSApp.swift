@@ -5,7 +5,7 @@ struct AgentOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        // Force dark mode
+        // Setup light appearance
         setupAppearance()
 
         // Initialize database
@@ -35,7 +35,7 @@ struct AgentOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
 

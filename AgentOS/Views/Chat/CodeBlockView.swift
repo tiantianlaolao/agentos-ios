@@ -35,17 +35,17 @@ struct CodeBlockView: View {
             }
             .padding(.horizontal, AppTheme.paddingStandard)
             .padding(.vertical, AppTheme.paddingSmall)
-            .background(Color(hex: "#111111"))
+            .background(AppTheme.border)
 
             // Code content
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
                     .font(.system(size: 13, weight: .regular, design: .monospaced))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .foregroundStyle(Color(hex: "#2D2620"))
                     .padding(AppTheme.paddingStandard)
             }
         }
-        .background(Color(hex: "#0D0D0D"))
+        .background(AppTheme.surfaceLight)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
     }
 }

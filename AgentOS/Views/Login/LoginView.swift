@@ -5,6 +5,7 @@ struct LoginView: View {
 
     @State private var showPassword = false
     @State private var showConfirmPassword = false
+    @State private var agreedToTerms = false
 
     var body: some View {
         ZStack {
@@ -103,13 +104,18 @@ struct LoginView: View {
                                             .padding(.vertical, 13)
                                             .frame(minWidth: 100)
                                             .background(authViewModel.countdown > 0
-                                                        ? Color(hex: "#3a3a5e")
+                                                        ? AppTheme.border
                                                         : AppTheme.primary)
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
                                     }
                                     .disabled(authViewModel.countdown > 0)
                                 }
                             }
+                        }
+
+                        // Agreement checkbox (register only)
+                        if !authViewModel.isLogin {
+                            agreementCheckbox
                         }
 
                         // Error Message
@@ -146,8 +152,8 @@ struct LoginView: View {
                             .background(AppTheme.primary)
                             .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                         }
-                        .disabled(authViewModel.isLoading)
-                        .opacity(authViewModel.isLoading ? 0.6 : 1)
+                        .disabled(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms))
+                        .opacity(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms) ? 0.6 : 1)
                         .padding(.top, 8)
 
                         // Skip Login
@@ -192,6 +198,48 @@ struct LoginView: View {
                 .foregroundStyle(AppTheme.textSecondary)
             content()
         }
+    }
+
+    private var agreementCheckbox: some View {
+        let isZh = L10n.shared.locale == "zh"
+        let agreementURL = URL(string: isZh
+            ? "https://www.tybbtech.com/zh/user-agreement"
+            : "https://www.tybbtech.com/en/user-agreement")!
+        let privacyURL = URL(string: isZh
+            ? "https://www.tybbtech.com/zh/privacy-policy"
+            : "https://www.tybbtech.com/en/privacy-policy")!
+
+        return HStack(alignment: .top, spacing: 8) {
+            Button {
+                agreedToTerms.toggle()
+            } label: {
+                Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 18))
+                    .foregroundStyle(agreedToTerms ? AppTheme.primary : AppTheme.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) {
+                    Text(L10n.tr("login.agreeTerms"))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Text(" ")
+                    Link(L10n.tr("settings.userAgreement"), destination: agreementURL)
+                        .foregroundStyle(AppTheme.textBrand)
+                }
+                HStack(spacing: 0) {
+                    Text(L10n.tr("login.and"))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Text(" ")
+                    Link(L10n.tr("settings.privacyPolicy"), destination: privacyURL)
+                        .foregroundStyle(AppTheme.textBrand)
+                }
+            }
+            .font(.system(size: 13))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
     }
 
     private func secureField(

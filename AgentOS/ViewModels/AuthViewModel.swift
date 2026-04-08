@@ -20,7 +20,15 @@ final class AuthViewModel {
     /// True only when user completed real login/register (not skip)
     var hasRealLogin = false
     var savedPhone = ""
+    var userCreatedAt: Int64?
     var isLoggedIn: Bool { hasRealLogin }
+
+    /// Number of days since registration (day 1 = registration day)
+    var companionDays: Int? {
+        guard let createdAt = userCreatedAt else { return nil }
+        let ms = Int64(Date().timeIntervalSince1970 * 1000) - createdAt
+        return Int(ms / 86_400_000) + 1
+    }
 
     // MARK: - SMS Countdown
 
@@ -39,9 +47,11 @@ final class AuthViewModel {
             let skipped = try await DatabaseService.shared.getSetting(key: "auth_skipped")
             let loggedIn = try await DatabaseService.shared.getSetting(key: "auth_loggedIn")
             let storedPhone = try await DatabaseService.shared.getSetting(key: "auth_phone")
+            let storedCreatedAt = try await DatabaseService.shared.getSetting(key: "auth_createdAt")
             isAuthenticated = (token != nil && !(token ?? "").isEmpty) || skipped == "true"
             hasRealLogin = loggedIn == "true"
             savedPhone = storedPhone ?? ""
+            userCreatedAt = storedCreatedAt.flatMap { Int64($0) }
         } catch {
             isAuthenticated = false
         }
@@ -67,9 +77,11 @@ final class AuthViewModel {
                let data = result["data"] as? [String: Any],
                let token = data["token"] as? String,
                let userId = data["userId"] as? String {
-                try await saveAuth(userId: userId, phone: trimmedPhone, token: token)
+                let createdAt = data["createdAt"] as? Int64 ?? (data["createdAt"] as? Double).map { Int64($0) }
+                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt)
                 hasRealLogin = true
                 savedPhone = trimmedPhone
+                userCreatedAt = createdAt
                 isAuthenticated = true
                 APNsService.shared.requestPermissionAndRegister()
             } else {
@@ -114,9 +126,11 @@ final class AuthViewModel {
                let data = result["data"] as? [String: Any],
                let token = data["token"] as? String,
                let userId = data["userId"] as? String {
-                try await saveAuth(userId: userId, phone: trimmedPhone, token: token)
+                let createdAt = data["createdAt"] as? Int64 ?? (data["createdAt"] as? Double).map { Int64($0) }
+                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt)
                 hasRealLogin = true
                 savedPhone = trimmedPhone
+                userCreatedAt = createdAt
                 isAuthenticated = true
                 APNsService.shared.requestPermissionAndRegister()
             } else {
@@ -212,6 +226,7 @@ final class AuthViewModel {
         isAuthenticated = false
         hasRealLogin = false
         savedPhone = ""
+        userCreatedAt = nil
         resetForm()
     }
 
@@ -230,12 +245,15 @@ final class AuthViewModel {
         return true
     }
 
-    private func saveAuth(userId: String, phone: String, token: String) async throws {
+    private func saveAuth(userId: String, phone: String, token: String, createdAt: Int64? = nil) async throws {
         try await DatabaseService.shared.setSetting(key: "auth_userId", value: userId)
         try await DatabaseService.shared.setSetting(key: "auth_phone", value: phone)
         try await DatabaseService.shared.setSetting(key: "auth_token", value: token)
         try await DatabaseService.shared.setSetting(key: "auth_loggedIn", value: "true")
         try await DatabaseService.shared.setSetting(key: "auth_skipped", value: "false")
+        if let createdAt {
+            try await DatabaseService.shared.setSetting(key: "auth_createdAt", value: String(createdAt))
+        }
     }
 
     private func resetForm() {

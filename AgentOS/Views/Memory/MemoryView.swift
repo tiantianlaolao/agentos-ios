@@ -4,6 +4,7 @@ struct MemoryView: View {
     @State private var viewModel = MemoryViewModel()
     @State private var isLoggedIn = false
     @State private var isBuiltinMode = true
+    @State private var companionDays: Int?
 
     var body: some View {
         ZStack {
@@ -88,9 +89,7 @@ struct MemoryView: View {
             if viewModel.memoryText.isEmpty {
                 VStack(spacing: 16) {
                     Spacer()
-                    Image(systemName: "lightbulb")
-                        .font(.system(size: 48))
-                        .foregroundStyle(AppTheme.textTertiary)
+                    AssistantAvatarView(size: .large, state: .idle)
                     Text(L10n.tr("memory.noContent"))
                         .font(AppTheme.bodyFont)
                         .foregroundStyle(AppTheme.textSecondary)
@@ -101,6 +100,13 @@ struct MemoryView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
+                        if let days = companionDays {
+                            Text(L10n.tr("memory.subtitle", ["days": "\(days)"]))
+                                .font(.system(size: 13))
+                                .foregroundStyle(AppTheme.textBrand)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.bottom, 4)
+                        }
                         Text(viewModel.memoryText)
                             .font(AppTheme.bodyFont)
                             .foregroundStyle(AppTheme.textPrimary)
@@ -189,6 +195,13 @@ struct MemoryView: View {
         // If user skipped login, they're authenticated but not "logged in" for memory
         if skipped == "true" && (token == nil || (token ?? "").isEmpty) {
             isLoggedIn = false
+        }
+
+        // Load companion days
+        if let createdAtStr = try? await DatabaseService.shared.getSetting(key: "auth_createdAt"),
+           let createdAt = Double(createdAtStr) {
+            let days = Int((Date().timeIntervalSince1970 * 1000 - createdAt) / 86400000) + 1
+            companionDays = max(1, days)
         }
     }
 }

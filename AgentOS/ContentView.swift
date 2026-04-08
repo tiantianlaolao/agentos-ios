@@ -30,16 +30,20 @@ struct MainTabView: View {
     @Bindable var authViewModel: AuthViewModel
     @State private var selectedTab = 0
     @State private var chatViewModel = ChatViewModel()
+    // Observe locale version to refresh tab labels and content on language change
+    private var localeVersion: Int { L10n.shared.version }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ChatView(viewModel: chatViewModel)
+            ChatView(viewModel: chatViewModel, authViewModel: authViewModel)
+                .id("chat-\(localeVersion)")
                 .tabItem {
                     Label(L10n.tr("tabs.chat"), systemImage: "bubble.left")
                 }
                 .tag(0)
 
             SkillStoreView()
+                .id("skills-\(localeVersion)")
                 .tabItem {
                     Label(L10n.tr("tabs.skills"), systemImage: "square.grid.2x2")
                 }
@@ -48,6 +52,7 @@ struct MainTabView: View {
             NavigationStack {
                 MemoryView()
             }
+            .id("memory-\(localeVersion)")
             .tabItem {
                 Label(L10n.tr("tabs.memory"), systemImage: "lightbulb")
             }
@@ -56,6 +61,7 @@ struct MainTabView: View {
             NavigationStack {
                 SettingsView(authViewModel: authViewModel)
             }
+            .id("settings-\(localeVersion)")
             .tabItem {
                 Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
             }

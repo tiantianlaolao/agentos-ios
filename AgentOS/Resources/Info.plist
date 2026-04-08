@@ -21,7 +21,7 @@
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>UIStatusBarStyle</key>
-	<string>UIStatusBarStyleLightContent</string>
+	<string>UIStatusBarStyleDarkContent</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>NSAppTransportSecurity</key>

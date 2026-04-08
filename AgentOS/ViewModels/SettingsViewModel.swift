@@ -138,6 +138,8 @@ final class SettingsViewModel {
             try await db.setSetting(key: ukey("copawDeployApiKey"), value: copawDeployApiKey)
             try await db.setSetting(key: ukey("copawDeployModel"), value: copawDeployModel)
             try await db.setSetting(key: ukey("locale"), value: locale)
+            // Apply locale change after save — triggers UI refresh via L10n.version
+            L10n.shared.setLocale(locale)
         } catch {
             print("[Settings] Save error: \(error)")
         }
