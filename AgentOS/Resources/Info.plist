@@ -9,7 +9,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>AgentOS</string>
 	<key>CFBundleVersion</key>
-	<string>9</string>
+	<string>12</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundlePackageType</key>
