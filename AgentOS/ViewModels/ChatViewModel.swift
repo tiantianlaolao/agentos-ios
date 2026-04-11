@@ -67,6 +67,7 @@ final class ChatViewModel {
     // MARK: - Private State
 
     private var currentAssistantId: String?
+    private var graceRecoveryConversationId: String?
     private var streamBuffer = ""
     private var currentUserId = "anonymous"
     /// True when OpenClaw mode uses WebSocket server proxy (empty URL, admin user)
@@ -534,6 +535,7 @@ final class ChatViewModel {
         try? await DatabaseService.shared.saveMessage(userMsg)
 
         // Init streaming state
+        graceRecoveryConversationId = nil
         let assistantId = UUID().uuidString
         currentAssistantId = assistantId
         streamBuffer = ""
@@ -633,6 +635,7 @@ final class ChatViewModel {
             }
         }
 
+        graceRecoveryConversationId = nil
         // Finalize current stream as message
         if let assistantId = currentAssistantId, !streamBuffer.isEmpty {
             let convId = currentConversationId ?? ""
@@ -658,6 +661,7 @@ final class ChatViewModel {
         } catch { /* ignore */ }
         messages = []
         hasMore = false
+        graceRecoveryConversationId = nil
         resetStreamingState()
     }
 
@@ -697,6 +701,7 @@ final class ChatViewModel {
         }()
 
         // Init streaming state
+        graceRecoveryConversationId = nil
         let assistantId = UUID().uuidString
         currentAssistantId = assistantId
         streamBuffer = ""
@@ -923,6 +928,10 @@ final class ChatViewModel {
 
                 if code == "CONNECTION_CLOSED" {
                     isConnected = false
+                    // Mark for grace recovery if we were streaming
+                    if currentAssistantId != nil {
+                        graceRecoveryConversationId = currentConversationId
+                    }
                     // Save any partial streaming content before resetting
                     if let assistantId = currentAssistantId, !streamBuffer.isEmpty,
                        let convId = currentConversationId {
@@ -980,6 +989,23 @@ final class ChatViewModel {
     // MARK: - Stream Handling (shared)
 
     private func handleStreamChunk(delta: String) {
+        // Grace period recovery: auto-init streaming when server flushes buffered content
+        if currentAssistantId == nil,
+           let graceConvId = graceRecoveryConversationId,
+           graceConvId == currentConversationId {
+            if let lastMsg = messages.last,
+               lastMsg.role == .assistant,
+               lastMsg.conversationId == currentConversationId ?? "" {
+                // Reuse partial message ID, recover its content
+                currentAssistantId = lastMsg.id
+                streamBuffer = lastMsg.content
+                messages.removeAll { $0.id == lastMsg.id }
+            } else {
+                currentAssistantId = UUID().uuidString
+                streamBuffer = ""
+            }
+            isStreaming = true
+        }
         guard currentAssistantId != nil else { return }
         streamBuffer += delta
 
@@ -991,40 +1017,73 @@ final class ChatViewModel {
     }
 
     private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil) {
-        guard let assistantId = currentAssistantId else { return }
+        if let assistantId = currentAssistantId {
+            let compareModel = _pendingCompareModel
+            _pendingCompareModel = nil
 
-        let compareModel = _pendingCompareModel
-        _pendingCompareModel = nil
+            // If vault just closed, mark this response as vault too so it gets cleaned up
+            let markAsVault = isVaultMode || vaultClosePending
+            if vaultClosePending {
+                vaultClosePending = false
+            }
 
-        // If vault just closed, mark this response as vault too so it gets cleaned up
-        let markAsVault = isVaultMode || vaultClosePending
-        if vaultClosePending {
-            vaultClosePending = false
-        }
+            let msg = ChatMessage(
+                id: assistantId,
+                conversationId: conversationId,
+                role: .assistant,
+                content: fullContent,
+                attachments: attachments,
+                compareModel: compareModel,
+                isVault: markAsVault
+            )
 
-        let msg = ChatMessage(
-            id: assistantId,
-            conversationId: conversationId,
-            role: .assistant,
-            content: fullContent,
-            attachments: attachments,
-            compareModel: compareModel,
-            isVault: markAsVault
-        )
+            if markAsVault && !isVaultMode {
+                // Vault closed: don't show this message, don't persist it
+                resetStreamingState()
+                return
+            }
 
-        if markAsVault && !isVaultMode {
-            // Vault closed: don't show this message, don't persist it
+            messages.append(msg)
+            Task {
+                try? await DatabaseService.shared.saveMessage(msg)
+                await checkAndCleanup(conversationId: conversationId)
+            }
+
+            graceRecoveryConversationId = nil
             resetStreamingState()
-            return
+        } else if let graceConvId = graceRecoveryConversationId, graceConvId == conversationId {
+            // Grace recovery: CHAT_DONE without preceding chunks (edge case)
+            if !fullContent.isEmpty {
+                if let lastMsg = messages.last,
+                   lastMsg.role == .assistant,
+                   lastMsg.conversationId == conversationId {
+                    // Update partial message with complete content
+                    if let idx = messages.firstIndex(where: { $0.id == lastMsg.id }) {
+                        messages[idx] = ChatMessage(
+                            id: lastMsg.id,
+                            conversationId: conversationId,
+                            role: .assistant,
+                            content: fullContent,
+                            attachments: attachments
+                        )
+                        Task {
+                            try? await DatabaseService.shared.saveMessage(messages[idx])
+                        }
+                    }
+                } else {
+                    let msg = ChatMessage(
+                        conversationId: conversationId,
+                        role: .assistant,
+                        content: fullContent,
+                        attachments: attachments
+                    )
+                    messages.append(msg)
+                    Task { try? await DatabaseService.shared.saveMessage(msg) }
+                }
+            }
+            graceRecoveryConversationId = nil
+            resetStreamingState()
         }
-
-        messages.append(msg)
-        Task {
-            try? await DatabaseService.shared.saveMessage(msg)
-            await checkAndCleanup(conversationId: conversationId)
-        }
-
-        resetStreamingState()
     }
 
     private func handleStreamError(error: String, conversationId: String) {
