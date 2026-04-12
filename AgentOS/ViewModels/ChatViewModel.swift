@@ -68,6 +68,7 @@ final class ChatViewModel {
 
     private var currentAssistantId: String?
     private var graceRecoveryConversationId: String?
+    private var graceRecoveryPartialAssistantId: String?
     private var streamBuffer = ""
     private var currentUserId = "anonymous"
     /// True when OpenClaw mode uses WebSocket server proxy (empty URL, admin user)
@@ -536,6 +537,7 @@ final class ChatViewModel {
 
         // Init streaming state
         graceRecoveryConversationId = nil
+        graceRecoveryPartialAssistantId = nil
         let assistantId = UUID().uuidString
         currentAssistantId = assistantId
         streamBuffer = ""
@@ -636,6 +638,7 @@ final class ChatViewModel {
         }
 
         graceRecoveryConversationId = nil
+        graceRecoveryPartialAssistantId = nil
         // Finalize current stream as message
         if let assistantId = currentAssistantId, !streamBuffer.isEmpty {
             let convId = currentConversationId ?? ""
@@ -662,6 +665,7 @@ final class ChatViewModel {
         messages = []
         hasMore = false
         graceRecoveryConversationId = nil
+        graceRecoveryPartialAssistantId = nil
         resetStreamingState()
     }
 
@@ -702,6 +706,7 @@ final class ChatViewModel {
 
         // Init streaming state
         graceRecoveryConversationId = nil
+        graceRecoveryPartialAssistantId = nil
         let assistantId = UUID().uuidString
         currentAssistantId = assistantId
         streamBuffer = ""
@@ -929,8 +934,9 @@ final class ChatViewModel {
                 if code == "CONNECTION_CLOSED" {
                     isConnected = false
                     // Mark for grace recovery if we were streaming
-                    if currentAssistantId != nil {
+                    if let aid = currentAssistantId {
                         graceRecoveryConversationId = currentConversationId
+                        graceRecoveryPartialAssistantId = streamBuffer.isEmpty ? nil : aid
                     }
                     // Save any partial streaming content before resetting
                     if let assistantId = currentAssistantId, !streamBuffer.isEmpty,
@@ -993,13 +999,12 @@ final class ChatViewModel {
         if currentAssistantId == nil,
            let graceConvId = graceRecoveryConversationId,
            graceConvId == currentConversationId {
-            if let lastMsg = messages.last,
-               lastMsg.role == .assistant,
-               lastMsg.conversationId == currentConversationId ?? "" {
+            if let partialId = graceRecoveryPartialAssistantId,
+               let partial = messages.first(where: { $0.id == partialId }) {
                 // Reuse partial message ID, recover its content
-                currentAssistantId = lastMsg.id
-                streamBuffer = lastMsg.content
-                messages.removeAll { $0.id == lastMsg.id }
+                currentAssistantId = partial.id
+                streamBuffer = partial.content
+                messages.removeAll { $0.id == partial.id }
             } else {
                 currentAssistantId = UUID().uuidString
                 streamBuffer = ""
@@ -1050,25 +1055,24 @@ final class ChatViewModel {
             }
 
             graceRecoveryConversationId = nil
+            graceRecoveryPartialAssistantId = nil
             resetStreamingState()
         } else if let graceConvId = graceRecoveryConversationId, graceConvId == conversationId {
             // Grace recovery: CHAT_DONE without preceding chunks (edge case)
             if !fullContent.isEmpty {
-                if let lastMsg = messages.last,
-                   lastMsg.role == .assistant,
-                   lastMsg.conversationId == conversationId {
+                if let partialId = graceRecoveryPartialAssistantId,
+                   let idx = messages.firstIndex(where: { $0.id == partialId }) {
                     // Update partial message with complete content
-                    if let idx = messages.firstIndex(where: { $0.id == lastMsg.id }) {
-                        messages[idx] = ChatMessage(
-                            id: lastMsg.id,
-                            conversationId: conversationId,
-                            role: .assistant,
-                            content: fullContent,
-                            attachments: attachments
-                        )
-                        Task {
-                            try? await DatabaseService.shared.saveMessage(messages[idx])
-                        }
+                    messages[idx] = ChatMessage(
+                        id: partialId,
+                        conversationId: conversationId,
+                        role: .assistant,
+                        content: fullContent,
+                        attachments: attachments
+                    )
+                    let updated = messages[idx]
+                    Task {
+                        try? await DatabaseService.shared.saveMessage(updated)
                     }
                 } else {
                     let msg = ChatMessage(
@@ -1082,6 +1086,7 @@ final class ChatViewModel {
                 }
             }
             graceRecoveryConversationId = nil
+            graceRecoveryPartialAssistantId = nil
             resetStreamingState()
         }
     }
