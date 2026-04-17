@@ -869,7 +869,22 @@ final class ChatViewModel {
                     }
                     if parsedAttachments?.isEmpty == true { parsedAttachments = nil }
                 }
-                handleStreamDone(fullContent: fullContent, conversationId: convId, attachments: parsedAttachments)
+                // Extract backtest action from skillsInvoked
+                var backtestAction: BacktestAction?
+                if let skillsInvoked = payload["skillsInvoked"] as? [[String: Any]] {
+                    for si in skillsInvoked {
+                        if let output = si["output"] as? [String: Any],
+                           let actionDict = output["open_backtest_workstation"] as? [String: Any] {
+                            backtestAction = BacktestAction(
+                                label: actionDict["label"] as? String ?? "在回测助手查看完整分析",
+                                stockCode: actionDict["stock_code"] as? String ?? "",
+                                strategyId: actionDict["strategy_id"] as? String
+                            )
+                            break
+                        }
+                    }
+                }
+                handleStreamDone(fullContent: fullContent, conversationId: convId, attachments: parsedAttachments, backtestAction: backtestAction)
             }
 
         case .skillStart:
@@ -1021,7 +1036,7 @@ final class ChatViewModel {
         }
     }
 
-    private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil) {
+    private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil, backtestAction: BacktestAction? = nil) {
         if let assistantId = currentAssistantId {
             let compareModel = _pendingCompareModel
             _pendingCompareModel = nil
@@ -1039,7 +1054,8 @@ final class ChatViewModel {
                 content: fullContent,
                 attachments: attachments,
                 compareModel: compareModel,
-                isVault: markAsVault
+                isVault: markAsVault,
+                backtestAction: backtestAction
             )
 
             if markAsVault && !isVaultMode {

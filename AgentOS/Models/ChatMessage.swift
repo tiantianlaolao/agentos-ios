@@ -1,6 +1,13 @@
 import Foundation
 import GRDB
 
+/// Action data for "open backtest workstation" buttons in chat bubbles
+struct BacktestAction: Sendable, Equatable {
+    let label: String
+    let stockCode: String
+    let strategyId: String?
+}
+
 struct ChatMessage: Identifiable, Sendable, Equatable {
     let id: String
     let conversationId: String
@@ -11,6 +18,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     var attachments: [Attachment]?
     var compareModel: String?
     var isVault: Bool
+    /// Transient (not persisted): action button to open backtest workstation
+    var backtestAction: BacktestAction?
 
     enum MessageRole: String, Codable, Sendable {
         case user
@@ -26,7 +35,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         skillName: String? = nil,
         attachments: [Attachment]? = nil,
         compareModel: String? = nil,
-        isVault: Bool = false
+        isVault: Bool = false,
+        backtestAction: BacktestAction? = nil
     ) {
         self.id = id
         self.conversationId = conversationId
@@ -37,6 +47,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.attachments = attachments
         self.compareModel = compareModel
         self.isVault = isVault
+        self.backtestAction = backtestAction
     }
 }
 

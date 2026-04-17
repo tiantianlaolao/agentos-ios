@@ -6,6 +6,7 @@ struct MessageBubbleView: View {
     let onCopy: () -> Void
     let onDelete: () -> Void
     var onCompare: ((String) -> Void)?
+    var onBacktestAction: ((BacktestAction) -> Void)?
     var showAvatar: Bool = false
 
     @State private var selectedImageURL: URL?
@@ -195,6 +196,25 @@ struct MessageBubbleView: View {
                 attachmentViews(isUser: false)
                 if !message.content.isEmpty {
                     SelectableContentView(content: message.content)
+                }
+                // Backtest workstation action button
+                if let action = message.backtestAction {
+                    Button {
+                        onBacktestAction?(action)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 12))
+                            Text(action.label)
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.primary)
+                        .clipShape(Capsule())
+                    }
+                    .padding(.top, 6)
                 }
                 HStack(spacing: 0) {
                     Spacer(minLength: 0)

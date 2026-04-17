@@ -10,6 +10,7 @@ struct SkillStoreView: View {
     @State private var addSkillAgentType: String = "builtin"
     @State private var installAgentSheet: SkillLibraryItem?
     @State private var showDesktopRequiredAlert = false
+    @State private var showBacktestWorkstation = false
 
     private enum AddSkillMode: String, Identifiable {
         case http, skillmd, generate
@@ -23,6 +24,11 @@ struct SkillStoreView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        // Pro Workstation section
+                        if viewModel.searchText.isEmpty && viewModel.selectedCategory == "all" {
+                            proWorkstationSection
+                        }
+
                         // Search bar
                         searchBar
 
@@ -125,6 +131,9 @@ struct SkillStoreView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showBacktestWorkstation) {
+            BacktestWorkstationView()
+        }
         .task {
             // Load server URL and token from settings
             let url = (try? await DatabaseService.shared.getSetting(key: "serverUrl")) ?? ServerConfig.shared.httpBaseURL
@@ -179,6 +188,70 @@ struct SkillStoreView: View {
             for agent in installedAgentNames {
                 viewModel.uninstallSkill(name: skill.name, agentType: agent)
             }
+        }
+    }
+
+    // MARK: - Pro Workstation
+
+    private var proWorkstationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("专业工作台")
+                .font(AppTheme.headlineFont)
+                .foregroundStyle(AppTheme.textPrimary)
+                .padding(.horizontal, AppTheme.paddingLarge)
+
+            Button {
+                showBacktestWorkstation = true
+            } label: {
+                HStack(spacing: 16) {
+                    VStack(spacing: 4) {
+                        Text("📈")
+                            .font(.system(size: 36))
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("回测助手")
+                            .font(AppTheme.bodyFont.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("13种策略 · 5000+只A股 · AI对话式分析")
+                            .font(AppTheme.captionFont)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Text("K线图 · 基本面画像 · 因子选股 · 策略回测")
+                            .font(AppTheme.smallFont)
+                            .foregroundStyle(AppTheme.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                .padding(16)
+                .background(
+                    LinearGradient(
+                        colors: [AppTheme.primary.opacity(0.08), AppTheme.primary.opacity(0.02)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                        .stroke(AppTheme.primary.opacity(0.2), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, AppTheme.paddingLarge)
+
+            // Placeholder for future workstations
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.dashed")
+                    .font(.system(size: 14))
+                Text("更多专业工具即将上线")
+                    .font(AppTheme.captionFont)
+            }
+            .foregroundStyle(AppTheme.textTertiary)
+            .padding(.horizontal, AppTheme.paddingLarge)
         }
     }
 

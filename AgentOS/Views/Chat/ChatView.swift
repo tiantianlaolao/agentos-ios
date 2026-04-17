@@ -18,6 +18,7 @@ struct ChatView: View {
     @State private var isUploading = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showTodayScreen = false
+    @State private var showBacktestWorkstation = false
 
     var body: some View {
         ZStack {
@@ -143,6 +144,9 @@ struct ChatView: View {
                 onDismiss: { viewModel.showCompareSheet = false }
             )
             .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showBacktestWorkstation) {
+            BacktestWorkstationView()
         }
         .confirmationDialog("Add Attachment", isPresented: $showAttachmentPicker) {
             Button("Photo Library") { showPhotoPicker = true }
@@ -368,6 +372,9 @@ struct ChatView: View {
                                 viewModel.compareOriginalContent = content
                                 viewModel.showCompareSheet = true
                             } : nil,
+                            onBacktestAction: { _ in
+                                showBacktestWorkstation = true
+                            },
                             showAvatar: message.role == .assistant && isFirstInAssistantGroup(at: index)
                         )
                     }
