@@ -145,8 +145,14 @@ struct MessageBubbleView: View {
                 if !message.content.isEmpty {
                     SelectableContentView(content: message.content)
                 }
-                HStack(spacing: 0) {
+                HStack(spacing: 4) {
                     Spacer(minLength: 0)
+                    Text("由 AI 生成")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
+                    Text("·")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
                     Text(timeStr)
                         .font(.system(size: 10))
                         .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
@@ -216,8 +222,14 @@ struct MessageBubbleView: View {
                     }
                     .padding(.top, 6)
                 }
-                HStack(spacing: 0) {
+                HStack(spacing: 4) {
                     Spacer(minLength: 0)
+                    Text("由 AI 生成")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
+                    Text("·")
+                        .font(.system(size: 10))
+                        .foregroundStyle(AppTheme.textTertiary.opacity(0.6))
                     Text(timeStr)
                         .font(.system(size: 10))
                         .foregroundStyle(AppTheme.textTertiary.opacity(0.6))

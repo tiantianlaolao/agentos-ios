@@ -97,9 +97,28 @@ struct ChatView: View {
                         .padding(.vertical, 4)
                     }
 
+                    // Quota bar (free tier only)
+                    QuotaBarView(authViewModel: authViewModel, refreshTrigger: viewModel.messages.count)
+
                     // Input bar
                     inputBar
                 }
+            }
+        }
+        .overlay {
+            if let msg = viewModel.quotaErrorMessage {
+                QuotaExceededModalView(
+                    message: msg,
+                    isByok: authViewModel.isByok,
+                    onConfigureByok: {
+                        viewModel.quotaErrorMessage = nil
+                        authViewModel.requestedTab = 3  // settings tab
+                    },
+                    onUpgrade: {
+                        viewModel.quotaErrorMessage = nil
+                    },
+                    onClose: { viewModel.quotaErrorMessage = nil }
+                )
             }
         }
         .task {
@@ -131,19 +150,6 @@ struct ChatView: View {
                 }
             )
             .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $viewModel.showCompareSheet) {
-            CompareModelSheet(
-                onSelect: { modelId, modelName in
-                    viewModel.compareWithModel(
-                        originalContent: viewModel.compareOriginalContent,
-                        model: modelId,
-                        modelName: modelName
-                    )
-                },
-                onDismiss: { viewModel.showCompareSheet = false }
-            )
-            .presentationDetents([.medium, .large])
         }
         .fullScreenCover(isPresented: $showBacktestWorkstation) {
             BacktestWorkstationView()
@@ -368,10 +374,8 @@ struct ChatView: View {
                             message: message,
                             onCopy: { viewModel.copyMessage(message) },
                             onDelete: { Task { await viewModel.deleteMessage(id: message.id) } },
-                            onCompare: viewModel.connectionMode == .builtin ? { content in
-                                viewModel.compareOriginalContent = content
-                                viewModel.showCompareSheet = true
-                            } : nil,
+                            /* Compare multi-model feature retired 2026-04-19 */
+                            onCompare: nil,
                             onBacktestAction: { _ in
                                 showBacktestWorkstation = true
                             },

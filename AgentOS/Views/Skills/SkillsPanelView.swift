@@ -268,10 +268,21 @@ private struct InstalledSkillRow: View {
                 .frame(width: 40, height: 40)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(skill.name)
-                    .font(AppTheme.bodyFont.weight(.medium))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(skill.name)
+                        .font(AppTheme.bodyFont.weight(.medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .lineLimit(1)
+                    if skill.name == "proactive" || skill.name == "public-link" {
+                        Text("会员专属")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(AppTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
                 Text(skill.description)
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)

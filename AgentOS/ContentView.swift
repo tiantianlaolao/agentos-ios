@@ -68,5 +68,11 @@ struct MainTabView: View {
             .tag(3)
         }
         .tint(AppTheme.primary)
+        .onChange(of: authViewModel.requestedTab) { _, newValue in
+            if let newValue {
+                selectedTab = newValue
+                authViewModel.requestedTab = nil
+            }
+        }
     }
 }

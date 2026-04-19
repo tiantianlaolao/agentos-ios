@@ -296,10 +296,21 @@ struct SkillStoreView: View {
                         VStack(spacing: 8) {
                             Text(skill.emoji ?? "")
                                 .font(.system(size: 32))
-                            Text(skill.localizedName(language: lang))
-                                .font(AppTheme.captionFont.weight(.semibold))
-                                .foregroundStyle(AppTheme.textPrimary)
-                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                Text(skill.localizedName(language: lang))
+                                    .font(AppTheme.captionFont.weight(.semibold))
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                    .lineLimit(1)
+                                if skill.name == "proactive" || skill.name == "public-link" {
+                                    Text("会员")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(AppTheme.primary)
+                                        .clipShape(Capsule())
+                                }
+                            }
                             Text(skill.localizedDescription(language: lang))
                                 .font(AppTheme.smallFont)
                                 .foregroundStyle(AppTheme.textSecondary)
@@ -392,6 +403,15 @@ struct SkillStoreView: View {
                             .foregroundStyle(AppTheme.textPrimary)
                             .lineLimit(1)
                         auditBadge(skill.audit)
+                        if skill.name == "proactive" || skill.name == "public-link" {
+                            Text("会员专属")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.primary)
+                                .clipShape(Capsule())
+                        }
                         if let skillType = skill.skillType {
                             Text(skillType == "system" ? L10n.tr("skills.systemSkill") : L10n.tr("skills.knowledgeSkill"))
                                 .font(.system(size: 9, weight: .semibold))

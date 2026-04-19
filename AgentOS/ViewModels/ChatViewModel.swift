@@ -39,8 +39,8 @@ final class ChatViewModel {
     var activeSkill: SkillExecution?
     var showAgentHub = false
     var errorMessage: String?
-    var showCompareSheet = false
-    var compareOriginalContent = ""
+    /// Surfaces RATE_LIMITED errors to a dedicated modal (C1)
+    var quotaErrorMessage: String?
 
     // Vault (Midong 秘洞) state
     var isVaultMode = false
@@ -686,51 +686,7 @@ final class ChatViewModel {
         #endif
     }
 
-    // MARK: - Compare with Model
-
-    func compareWithModel(originalContent: String, model: String, modelName: String) {
-        guard !isStreaming, let convId = currentConversationId else { return }
-
-        // Find the user message that preceded the assistant reply being compared
-        // We search backwards for the last user message before the compare target
-        let userContent: String = {
-            // Find original assistant message, then look for user message before it
-            if let idx = messages.lastIndex(where: { $0.content == originalContent && $0.role == .assistant }) {
-                let preceding = messages[..<idx]
-                if let userMsg = preceding.last(where: { $0.role == .user }) {
-                    return userMsg.content
-                }
-            }
-            return originalContent
-        }()
-
-        // Init streaming state
-        graceRecoveryConversationId = nil
-        graceRecoveryPartialAssistantId = nil
-        let assistantId = UUID().uuidString
-        currentAssistantId = assistantId
-        streamBuffer = ""
-        isStreaming = true
-        streamingContent = nil
-
-        // Build history (same as regular send)
-        let history = buildHistory()
-
-        // Send via WebSocket with model and compareMode
-        startStreamTimeout()
-        wsService.sendChat(
-            conversationId: convId,
-            content: userContent,
-            history: history,
-            model: model,
-            compareMode: true
-        )
-
-        // Store compareModel so we can tag the resulting message
-        self._pendingCompareModel = modelName
-    }
-
-    private var _pendingCompareModel: String?
+    // Compare feature retired 2026-04-19 — compareWithModel / _pendingCompareModel removed
 
     // MARK: - BYOK Direct Streaming
 
@@ -984,6 +940,13 @@ final class ChatViewModel {
                 if currentAssistantId != nil {
                     resetStreamingState()
                 }
+
+                // C1: dedicated quota modal for rate-limit errors
+                if code == "RATE_LIMITED" {
+                    quotaErrorMessage = msg
+                    return
+                }
+
                 addErrorMessage(msg, conversationId: payload["conversationId"] as? String)
             }
 
@@ -1038,9 +1001,6 @@ final class ChatViewModel {
 
     private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil, backtestAction: BacktestAction? = nil) {
         if let assistantId = currentAssistantId {
-            let compareModel = _pendingCompareModel
-            _pendingCompareModel = nil
-
             // If vault just closed, mark this response as vault too so it gets cleaned up
             let markAsVault = isVaultMode || vaultClosePending
             if vaultClosePending {
@@ -1053,7 +1013,7 @@ final class ChatViewModel {
                 role: .assistant,
                 content: fullContent,
                 attachments: attachments,
-                compareModel: compareModel,
+                compareModel: nil,
                 isVault: markAsVault,
                 backtestAction: backtestAction
             )
@@ -1132,7 +1092,6 @@ final class ChatViewModel {
         streamBuffer = ""
         currentAssistantId = nil
         activeSkill = nil
-        _pendingCompareModel = nil
         byokStreamTask?.cancel()
         byokStreamTask = nil
     }
