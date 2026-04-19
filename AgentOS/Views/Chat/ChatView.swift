@@ -237,17 +237,8 @@ struct ChatView: View {
 
     private var chatTopBar: some View {
         HStack(spacing: 0) {
-            // Left: Hub toggle
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    viewModel.showAgentHub.toggle()
-                }
-            } label: {
-                Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .frame(width: 44, height: 44)
-            }
+            // Hub toggle retired 2026-04-19 — external agent feature removed
+            Spacer().frame(width: 44, height: 44)
 
             Spacer()
 
@@ -374,8 +365,6 @@ struct ChatView: View {
                             message: message,
                             onCopy: { viewModel.copyMessage(message) },
                             onDelete: { Task { await viewModel.deleteMessage(id: message.id) } },
-                            /* Compare multi-model feature retired 2026-04-19 */
-                            onCompare: nil,
                             onBacktestAction: { _ in
                                 showBacktestWorkstation = true
                             },

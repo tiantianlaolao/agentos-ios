@@ -16,7 +16,6 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     let timestamp: Int
     var skillName: String?
     var attachments: [Attachment]?
-    var compareModel: String?
     var isVault: Bool
     /// Transient (not persisted): action button to open backtest workstation
     var backtestAction: BacktestAction?
@@ -34,7 +33,6 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         timestamp: Int = Int(Date().timeIntervalSince1970 * 1000),
         skillName: String? = nil,
         attachments: [Attachment]? = nil,
-        compareModel: String? = nil,
         isVault: Bool = false,
         backtestAction: BacktestAction? = nil
     ) {
@@ -45,7 +43,6 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.timestamp = timestamp
         self.skillName = skillName
         self.attachments = attachments
-        self.compareModel = compareModel
         self.isVault = isVault
         self.backtestAction = backtestAction
     }

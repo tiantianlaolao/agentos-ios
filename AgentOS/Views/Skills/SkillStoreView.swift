@@ -4,12 +4,8 @@ struct SkillStoreView: View {
     @State private var viewModel = SkillStoreViewModel()
     @State private var chatViewModel: ChatViewModel?
     @State private var showAddSkillSheet = false
-    @State private var showAddBuiltinMethods = false
-    @State private var showAddOpenclawMethods = false
     @State private var addSkillMode: AddSkillMode?
     @State private var addSkillAgentType: String = "builtin"
-    @State private var installAgentSheet: SkillLibraryItem?
-    @State private var showDesktopRequiredAlert = false
     @State private var showBacktestWorkstation = false
 
     private enum AddSkillMode: String, Identifiable {
@@ -69,56 +65,13 @@ struct SkillStoreView: View {
             }
             .navigationTitle(L10n.tr("skills.store"))
             .navigationBarTitleDisplayMode(.inline)
-            .confirmationDialog(L10n.tr("skills.selectAgent"), isPresented: Binding(
-                get: { installAgentSheet != nil },
-                set: { if !$0 { installAgentSheet = nil } }
-            )) {
-                if let skill = installAgentSheet {
-                    let agents = (skill.compatibleAgents ?? ["builtin"]).filter { $0 != "copaw" }
-                    if agents.contains("builtin") {
-                        Button(L10n.tr("skills.forBuiltinAgent")) {
-                            viewModel.installSkill(name: skill.name, agentType: "builtin")
-                            installAgentSheet = nil
-                        }
-                    }
-                    if agents.contains("openclaw") {
-                        Button(L10n.tr("skills.forOpenclawAgent")) {
-                            installAgentSheet = nil
-                            showDesktopRequiredAlert = true
-                        }
-                    }
-                    Button(L10n.tr("skills.cancel"), role: .cancel) {
-                        installAgentSheet = nil
-                    }
-                }
-            }
-            // Step 1: Select agent type for adding skill
-            .confirmationDialog(L10n.tr("skills.selectAgentFirst"), isPresented: $showAddSkillSheet) {
-                Button(L10n.tr("skills.builtinAgent")) {
-                    addSkillAgentType = "builtin"
-                    showAddBuiltinMethods = true
-                }
-                Button(L10n.tr("skills.openclawAgent")) {
-                    showDesktopRequiredAlert = true
-                }
-                Button(L10n.tr("skills.cancel"), role: .cancel) {}
-            }
-            // Step 2a: Builtin agent methods (4 options)
-            .confirmationDialog(L10n.tr("skills.builtinMethods"), isPresented: $showAddBuiltinMethods) {
+            // External Agent picker retired 2026-04-19 — skills always install to builtin
+            // Skill add methods menu (simplified: no agent picker)
+            .confirmationDialog(L10n.tr("skills.builtinMethods"), isPresented: $showAddSkillSheet) {
                 Button(L10n.tr("skills.registerHttpSkill")) { addSkillMode = .http }
                 Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
                 Button(L10n.tr("skills.aiGenerate")) { addSkillMode = .generate }
                 Button(L10n.tr("skills.cancel"), role: .cancel) {}
-            }
-            // Step 2b: OpenClaw methods (only SKILL.md)
-            .confirmationDialog(L10n.tr("skills.openclawMethods"), isPresented: $showAddOpenclawMethods) {
-                Button(L10n.tr("skills.importSkillMd")) { addSkillMode = .skillmd }
-                Button(L10n.tr("skills.cancel"), role: .cancel) {}
-            }
-            .alert(L10n.tr("skills.desktopRequired"), isPresented: $showDesktopRequiredAlert) {
-                Button(L10n.tr("skills.ok"), role: .cancel) {}
-            } message: {
-                Text(L10n.tr("skills.desktopRequiredMessage"))
             }
             .sheet(item: $addSkillMode) { mode in
                 switch mode {
@@ -154,22 +107,8 @@ struct SkillStoreView: View {
     }
 
     private func handleInstall(_ skill: SkillLibraryItem) {
-        // Only skillmd type skills can be installed for OpenClaw
-        // Non-skillmd: install directly for builtin without showing agent picker
-        let isSkillMd = skill.skillType == "skillmd"
-
-        if !isSkillMd {
-            viewModel.installSkill(name: skill.name, agentType: "builtin")
-            return
-        }
-
-        // For skillmd skills, filter out copaw and show agent picker if multiple agents
-        let agents = (skill.compatibleAgents ?? ["builtin"]).filter { $0 != "copaw" }
-        if agents.count <= 1 {
-            viewModel.installSkill(name: skill.name, agentType: agents.first ?? "builtin")
-        } else {
-            installAgentSheet = skill
-        }
+        // External Agent retired 2026-04-19 — always install to builtin
+        viewModel.installSkill(name: skill.name, agentType: "builtin")
     }
 
     private func handleUninstall(_ skill: SkillLibraryItem) {

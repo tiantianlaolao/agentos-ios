@@ -6,10 +6,10 @@ struct SettingsView: View {
 
     // MARK: - Data
 
+    // External Agent mode retired 2026-04-19 — only builtin remains
     private var modes: [(key: ConnectionMode, titleKey: String, descKey: String, icon: String, color: Color)] {
         [
             (.builtin, "settings.builtin", "settings.builtinDesc", "cpu", Color(hex: "#2d7d46")),
-            (.agent, "settings.agent", "settings.agentDesc", "bolt.fill", Color(hex: "#c26a1b")),
         ]
     }
 
@@ -126,13 +126,7 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(modeColor.opacity(0.8))
             }
-            if viewModel.mode == .agent {
-                let agentLabel = viewModel.agentId == "openclaw" ? "OpenClaw" :
-                                 L10n.tr("settings.agentCustom")
-                Text("(\(agentLabel))")
-                    .font(.system(size: 11))
-                    .foregroundStyle(modeColor.opacity(0.8))
-            }
+            // External Agent label retired 2026-04-19
             Spacer()
         }
         .padding(.horizontal, 14)
@@ -296,7 +290,7 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     subModeRow(
                         title: L10n.tr("settings.builtinFree"),
-                        subtitle: L10n.tr("settings.builtinDesc"),
+                        subtitle: L10n.tr("settings.builtinFreeDesc"),
                         selected: viewModel.builtinSubMode == "free",
                         isLast: false
                     ) {

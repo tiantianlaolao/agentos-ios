@@ -5,7 +5,6 @@ struct MessageBubbleView: View {
     let message: ChatMessage
     let onCopy: () -> Void
     let onDelete: () -> Void
-    var onCompare: ((String) -> Void)?
     var onBacktestAction: ((BacktestAction) -> Void)?
     var showAvatar: Bool = false
 
@@ -53,13 +52,7 @@ struct MessageBubbleView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(isUser ? .white.opacity(0.5) : AppTheme.textTertiary)
             }
-            if !isUser && message.compareModel == nil && !message.content.hasPrefix("[Error]") && onCompare != nil {
-                Button { onCompare?(message.content) } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
-                        .foregroundStyle(AppTheme.textTertiary)
-                }
-            }
+            // Compare button removed 2026-04-19 (feature retired)
             Button { onDelete() } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 11))
@@ -186,19 +179,7 @@ struct MessageBubbleView: View {
         } else {
             // Assistant bubble - attachments + markdown + time inside
             VStack(alignment: .leading, spacing: 4) {
-                if let modelName = message.compareModel {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 10))
-                        Text(modelName)
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .foregroundStyle(AppTheme.accent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(AppTheme.accent.opacity(0.12))
-                    .clipShape(Capsule())
-                }
+                // Compare model tag removed 2026-04-19 (feature retired)
                 attachmentViews(isUser: false)
                 if !message.content.isEmpty {
                     SelectableContentView(content: message.content)

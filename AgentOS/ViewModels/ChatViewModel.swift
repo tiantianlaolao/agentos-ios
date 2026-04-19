@@ -1013,7 +1013,6 @@ final class ChatViewModel {
                 role: .assistant,
                 content: fullContent,
                 attachments: attachments,
-                compareModel: nil,
                 isVault: markAsVault,
                 backtestAction: backtestAction
             )

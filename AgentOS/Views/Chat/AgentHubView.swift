@@ -8,6 +8,7 @@ struct AgentCard: Identifiable {
     let color: Color
 }
 
+// External Agent card retired 2026-04-19 — only builtin remains
 private let agentCards: [AgentCard] = [
     AgentCard(
         id: .builtin,
@@ -15,13 +16,6 @@ private let agentCards: [AgentCard] = [
         descKey: "chat.tabBuiltinDesc",
         icon: "cpu",
         color: AppTheme.success
-    ),
-    AgentCard(
-        id: .agent,
-        nameKey: "chat.tabAgent",
-        descKey: "chat.tabAgentDesc",
-        icon: "bolt.fill",
-        color: AppTheme.warning
     ),
 ]
 

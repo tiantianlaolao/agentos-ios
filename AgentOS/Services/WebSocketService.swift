@@ -154,8 +154,8 @@ final class WebSocketService {
         }
     }
 
-    func sendChat(conversationId: String, content: String, history: [ChatHistoryItem]? = nil, attachments: [Attachment]? = nil, model: String? = nil, compareMode: Bool? = nil) {
-        var dict = encodeToDictionary(ChatSendPayload(conversationId: conversationId, content: content, history: history, model: model, compareMode: compareMode))
+    func sendChat(conversationId: String, content: String, history: [ChatHistoryItem]? = nil, attachments: [Attachment]? = nil, model: String? = nil) {
+        var dict = encodeToDictionary(ChatSendPayload(conversationId: conversationId, content: content, history: history, model: model))
         if let attachments = attachments, !attachments.isEmpty {
             let attachmentDicts = attachments.map { att -> [String: Any] in
                 [
