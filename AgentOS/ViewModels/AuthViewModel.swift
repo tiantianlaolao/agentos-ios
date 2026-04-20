@@ -24,7 +24,7 @@ final class AuthViewModel {
     var isLoggedIn: Bool { hasRealLogin }
 
     // Membership plan (S1-S6)
-    var plan: String = "free"  // "free" | "member_builtin" | "member_byok"
+    var plan: String = "free"  // "free" | "member"
     var planExpires: Int64?
     var isByok: Bool = false
 

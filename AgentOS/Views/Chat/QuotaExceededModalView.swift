@@ -2,8 +2,6 @@ import SwiftUI
 
 struct QuotaExceededModalView: View {
     let message: String
-    let isByok: Bool
-    let onConfigureByok: () -> Void
     let onUpgrade: () -> Void
     let onClose: () -> Void
 
@@ -25,18 +23,6 @@ struct QuotaExceededModalView: View {
                     .padding(.horizontal, 8)
 
                 VStack(spacing: 8) {
-                    if !isByok {
-                        Button(action: onConfigureByok) {
-                            Text("配置自己的 API Key 免费继续")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(AppTheme.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color(hex: "#FFF8F0"))
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(AppTheme.primary.opacity(0.3)))
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
                     Button(action: onUpgrade) {
                         Text("升级会员")
                             .font(.system(size: 14, weight: .medium))

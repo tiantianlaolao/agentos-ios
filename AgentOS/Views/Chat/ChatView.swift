@@ -109,11 +109,6 @@ struct ChatView: View {
             if let msg = viewModel.quotaErrorMessage {
                 QuotaExceededModalView(
                     message: msg,
-                    isByok: authViewModel.isByok,
-                    onConfigureByok: {
-                        viewModel.quotaErrorMessage = nil
-                        authViewModel.requestedTab = 3  // settings tab
-                    },
                     onUpgrade: {
                         viewModel.quotaErrorMessage = nil
                     },
