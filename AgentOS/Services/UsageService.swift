@@ -17,6 +17,8 @@ struct UsageDaily: Decodable {
 
 struct UsageResponse: Decodable {
     let plan: String
+    let planExpires: Int64?
+    let purchaseChannel: String?
     let isByok: Bool
     let isExpired: Bool
     let daily: UsageDaily

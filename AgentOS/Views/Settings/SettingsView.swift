@@ -42,7 +42,14 @@ struct SettingsView: View {
 
                 // Account section
                 accountSection
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 8)
+
+                // Membership entry (only when logged in)
+                if authViewModel.isLoggedIn {
+                    membershipEntry
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                }
 
                 // Connection Mode
                 settingsSection(header: L10n.tr("settings.connectionMode")) {
@@ -149,6 +156,36 @@ struct SettingsView: View {
     @State private var betaLoading = false
     @State private var betaError = ""
     @State private var pendingAgentId = ""
+
+    // MARK: - Membership Entry
+
+    private var membershipEntry: some View {
+        NavigationLink {
+            MembershipView(authViewModel: authViewModel)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color(hex: "#f59e0b"))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("会员中心")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(authViewModel.plan == "free" ? "免费版" : "灵犀会员")
+                        .font(.system(size: 12))
+                        .foregroundStyle(authViewModel.plan == "free" ? AppTheme.textTertiary : Color(hex: "#d97706"))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
 
     private var accountSection: some View {
         Group {
