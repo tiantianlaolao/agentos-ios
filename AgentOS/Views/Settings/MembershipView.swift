@@ -4,6 +4,7 @@ import StoreKit
 struct MembershipView: View {
     @Bindable var authViewModel: AuthViewModel
     @State private var store = StoreService.shared
+    @State private var showCSWebView = false
     @State private var usage: UsageData?
     @State private var purchaseChannel: String?
     @State private var message: String?
@@ -81,6 +82,14 @@ struct MembershipView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 4)
 
+                // CS link
+                Button("遇到问题？联系在线客服") {
+                    showCSWebView = true
+                }
+                .font(.system(size: 13))
+                .foregroundStyle(AppTheme.textTertiary)
+                .padding(.top, 8)
+
                 // Error
                 if let err = store.errorMessage {
                     Text(err)
@@ -98,6 +107,18 @@ struct MembershipView: View {
         .task {
             await store.loadProducts()
             await fetchUsage()
+        }
+        .sheet(isPresented: $showCSWebView) {
+            NavigationStack {
+                CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
+                    .navigationTitle("在线客服")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("关闭") { showCSWebView = false }
+                        }
+                    }
+            }
         }
     }
 
