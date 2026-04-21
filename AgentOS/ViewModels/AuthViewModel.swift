@@ -32,6 +32,9 @@ final class AuthViewModel {
     /// MainTabView observes this and clears it after applying.
     var requestedTab: Int?
 
+    /// C8: Trial banner — shown once after login/register
+    var trialBanner: String?  // "granted" | "expired" | nil
+
     /// Number of days since registration (day 1 = registration day)
     var companionDays: Int? {
         guard let createdAt = userCreatedAt else { return nil }
@@ -115,6 +118,10 @@ final class AuthViewModel {
                 isByok = isByokVal
                 planExpires = planExpiresVal
                 isAuthenticated = true
+                // C8: trial banner
+                if let justExpired = data["planJustExpired"] as? Bool, justExpired {
+                    trialBanner = "expired"
+                }
                 APNsService.shared.requestPermissionAndRegister()
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Login failed"
@@ -170,6 +177,10 @@ final class AuthViewModel {
                 isByok = isByokVal
                 planExpires = planExpiresVal
                 isAuthenticated = true
+                // C8: trial banner
+                if let granted = data["trialGranted"] as? Bool, granted {
+                    trialBanner = "granted"
+                }
                 APNsService.shared.requestPermissionAndRegister()
             } else {
                 let error = result["error"] as? String ?? result["message"] as? String ?? "Registration failed"

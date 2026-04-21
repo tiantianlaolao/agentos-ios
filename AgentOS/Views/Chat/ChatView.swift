@@ -97,6 +97,28 @@ struct ChatView: View {
                         .padding(.vertical, 4)
                     }
 
+                    // C8: Trial banner
+                    if let banner = authViewModel.trialBanner {
+                        HStack {
+                            Text(banner == "granted" ? "🎁 恭喜！您获得 7 天免费会员体验" : "⏰ 您的会员已到期，升级会员继续享用全部功能")
+                                .font(.system(size: 13))
+                            Spacer()
+                            Button(banner == "expired" ? "去升级" : "知道了") {
+                                if banner == "expired" {
+                                    authViewModel.requestedTab = 3
+                                }
+                                authViewModel.trialBanner = nil
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(banner == "granted" ? Color(hex: "#f59e0b").opacity(0.1) : Color.red.opacity(0.08))
+                        .foregroundStyle(banner == "granted" ? Color(hex: "#d97706") : .red)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(.horizontal, 12)
+                    }
+
                     // Quota bar (free tier only)
                     QuotaBarView(authViewModel: authViewModel, refreshTrigger: viewModel.messages.count)
 
