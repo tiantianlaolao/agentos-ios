@@ -109,6 +109,18 @@ struct SettingsView: View {
         } message: {
             Text(betaError.isEmpty ? L10n.tr("settings.betaRequiredDesc") : betaError)
         }
+        .sheet(isPresented: $showCSWebView) {
+            NavigationStack {
+                CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
+                    .navigationTitle("在线客服")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("关闭") { showCSWebView = false }
+                        }
+                    }
+            }
+        }
     }
 
     // MARK: - Current Mode Bar
@@ -149,6 +161,7 @@ struct SettingsView: View {
     // MARK: - Account Section
 
     @State private var showLoginSheet = false
+    @State private var showCSWebView = false
     @State private var showDeleteAccountAlert = false
     @State private var deleteAccountPassword = ""
     @State private var showBetaAlert = false
@@ -839,8 +852,6 @@ struct SettingsView: View {
             ? "https://www.tybbtech.com/zh/privacy-policy"
             : "https://www.tybbtech.com/en/privacy-policy"
 
-        let csURL = ServerConfig.shared.httpBaseURL + "/cs"
-
         return VStack(spacing: 6) {
             Text("AgentOS iOS v3.0.0")
                 .font(.system(size: 12))
@@ -859,9 +870,11 @@ struct SettingsView: View {
                 Text(" · ")
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textTertiary)
-                Link("在线客服", destination: URL(string: csURL)!)
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppTheme.textBrand)
+                Button("在线客服") {
+                    showCSWebView = true
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.textBrand)
             }
         }
         .frame(maxWidth: .infinity)
