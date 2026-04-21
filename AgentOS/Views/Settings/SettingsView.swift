@@ -839,8 +839,10 @@ struct SettingsView: View {
             ? "https://www.tybbtech.com/zh/privacy-policy"
             : "https://www.tybbtech.com/en/privacy-policy"
 
+        let csURL = ServerConfig.shared.httpBaseURL + "/cs"
+
         return VStack(spacing: 6) {
-            Text("AgentOS iOS v1.0.0")
+            Text("AgentOS iOS v3.0.0")
                 .font(.system(size: 12))
                 .foregroundStyle(AppTheme.textTertiary)
 
@@ -852,6 +854,12 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textTertiary)
                 Link(L10n.tr("settings.privacyPolicy"), destination: URL(string: privacyURL)!)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.textBrand)
+                Text(" · ")
+                    .font(.system(size: 12))
+                    .foregroundStyle(AppTheme.textTertiary)
+                Link("在线客服", destination: URL(string: csURL)!)
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textBrand)
             }

@@ -121,7 +121,7 @@ struct MembershipView: View {
 
             if let u = usage {
                 HStack(spacing: 16) {
-                    Text("对话 \(u.quotaMsg < 0 ? "不限" : "\(u.dailyMsg)次/\(u.quotaMsg)次")")
+                    Text("对话 \(isMember || u.quotaMsg < 0 ? "不限" : "\(u.dailyMsg)次/\(u.quotaMsg)次")")
                     Text("搜索 \(u.quotaSearch < 0 ? "不限" : "\(u.dailySearch)次/\(u.quotaSearch)次")")
                 }
                 .font(.system(size: 12))
