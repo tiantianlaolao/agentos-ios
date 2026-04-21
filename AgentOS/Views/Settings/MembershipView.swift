@@ -62,6 +62,23 @@ struct MembershipView: View {
                 }
                 .padding(.top, 4)
 
+                // Subscription terms (Apple review requirement)
+                VStack(spacing: 4) {
+                    Text("确认购买后将从 Apple ID 账户扣款。订阅到期前 24 小时内自动续费，可随时在「设置 → Apple ID → 订阅」中取消。")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .multilineTextAlignment(.center)
+                    HStack(spacing: 4) {
+                        Link("隐私政策", destination: URL(string: "https://www.tybbtech.com/zh/privacy-policy")!)
+                        Text("·").foregroundStyle(AppTheme.textTertiary)
+                        Link("用户协议", destination: URL(string: "https://www.tybbtech.com/zh/user-agreement")!)
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color(hex: "#d97706"))
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 4)
+
                 // Error
                 if let err = store.errorMessage {
                     Text(err)
