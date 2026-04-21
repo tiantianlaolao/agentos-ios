@@ -54,7 +54,7 @@ class StoreService {
                     await transaction.finish()
                     return true
                 } else {
-                    errorMessage = "服务器验证失败，请稍后重试"
+                    if errorMessage == nil { errorMessage = "服务器验证失败，请稍后重试" }
                     return false
                 }
             case .userCancelled:
@@ -131,12 +131,22 @@ class StoreService {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                print("[Store] Server verify failed: status \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+            if statusCode == 403 {
+                // Subscription bound to another account
+                let errMsg = json?["error"] as? String ?? "此订阅已关联其他账号"
+                print("[Store] IAP binding rejected: \(errMsg)")
+                errorMessage = errMsg
                 return false
             }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let ok = json["ok"] as? Bool, ok {
+
+            guard statusCode == 200 else {
+                print("[Store] Server verify failed: status \(statusCode)")
+                return false
+            }
+            if let ok = json?["ok"] as? Bool, ok {
                 print("[Store] Server verified OK, product=\(productId)")
                 return true
             }
