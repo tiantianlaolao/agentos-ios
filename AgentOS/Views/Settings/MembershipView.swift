@@ -18,6 +18,8 @@ struct MembershipView: View {
         guard let exp = planExpires else { return 0 }
         return Int(ceil(Double(exp - Int64(Date().timeIntervalSince1970 * 1000)) / 86_400_000))
     }
+    private var isExpired: Bool { isMember && planExpires != nil && planExpires! < Int64(Date().timeIntervalSince1970 * 1000) }
+    private var graceDaysLeft: Int { isExpired ? 3 + daysLeft : 0 }
 
     var body: some View {
         ScrollView {
@@ -178,8 +180,20 @@ struct MembershipView: View {
 
     private var pricingSection: some View {
         VStack(spacing: 12) {
-            if isQRMember {
-                // QR-scan member viewing on iOS — can't renew here
+            // Grace period urgent notice
+            if isExpired && graceDaysLeft > 0 {
+                Text("⚠ 会员已过期，宽限期剩 \(graceDaysLeft) 天，请尽快续费！")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .background(Color.red.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.red.opacity(0.2)))
+            }
+
+            if isQRMember && !isExpired {
+                // QR-scan member (not expired) viewing on iOS — can't renew here
                 VStack(spacing: 8) {
                     Text("您的会员通过桌面端购买")
                         .font(.system(size: 14))
@@ -192,7 +206,7 @@ struct MembershipView: View {
                 .padding(.vertical, 24)
                 .background(AppTheme.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else if isIAPMember {
+            } else if isIAPMember && !isExpired {
                 // IAP member — managed by Apple
                 VStack(spacing: 8) {
                     Text("🍎")
