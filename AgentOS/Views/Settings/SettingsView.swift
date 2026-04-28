@@ -64,6 +64,11 @@ struct SettingsView: View {
                     languageRow
                 }
 
+                // Privacy & Compliance — R4 personalization toggle + P1-C complaint entry
+                settingsSection(header: L10n.tr("settings.privacySection")) {
+                    privacyRows
+                }
+
                 // Save button
                 saveButton
                     .padding(.horizontal, 16)
@@ -168,6 +173,9 @@ struct SettingsView: View {
     @State private var betaCode = ""
     @State private var betaLoading = false
     @State private var betaError = ""
+    @State private var showComplaintSheet = false
+    @State private var personalizationFailMessage = ""
+    @State private var showPersonalizationFailAlert = false
     @State private var pendingAgentId = ""
 
     // MARK: - Membership Entry
@@ -775,6 +783,95 @@ struct SettingsView: View {
             selected: viewModel.locale
         ) {
             viewModel.locale = $0
+        }
+    }
+
+    // MARK: - Privacy Rows (R4 + P1-C)
+
+    private var privacyRows: some View {
+        VStack(spacing: 10) {
+            // R4 personalization toggle
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.tr("settings.personalizationTitle"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(L10n.tr("settings.personalizationDesc"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .lineSpacing(3)
+                }
+                Spacer(minLength: 12)
+                Toggle("", isOn: Binding(
+                    get: { viewModel.personalizationEnabled },
+                    set: { newValue in
+                        Task {
+                            let ok = await viewModel.togglePersonalization(newValue)
+                            if !ok {
+                                personalizationFailMessage = L10n.tr("settings.personalizationFailMsg")
+                                showPersonalizationFailAlert = true
+                            }
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .tint(AppTheme.primary)
+                .disabled(viewModel.personalizationLoading)
+            }
+            .padding(14)
+            .background(AppTheme.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(AppTheme.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // P1-C complaint entry
+            Button {
+                showComplaintSheet = true
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.tr("settings.complaintTitle"))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text(L10n.tr("settings.complaintDesc"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .multilineTextAlignment(.leading)
+                            .lineSpacing(3)
+                    }
+                    Spacer(minLength: 12)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                .padding(14)
+                .background(AppTheme.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppTheme.border, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+        }
+        .sheet(isPresented: $showComplaintSheet) {
+            NavigationStack {
+                ComplaintFormView(authViewModel: authViewModel)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(L10n.tr("complaint.ok")) {
+                                showComplaintSheet = false
+                            }
+                        }
+                    }
+            }
+        }
+        .alert(L10n.tr("settings.personalizationFailTitle"), isPresented: $showPersonalizationFailAlert) {
+            Button(L10n.tr("complaint.ok")) {}
+        } message: {
+            Text(personalizationFailMessage)
         }
     }
 

@@ -37,6 +37,10 @@ final class SettingsViewModel {
     var locale: String = "zh"
     var serverUrl: String = ServerConfig.shared.httpBaseURL
 
+    // Compliance toggles (R4)
+    var personalizationEnabled: Bool = true
+    var personalizationLoading: Bool = false
+
     // UI
     var isSaving: Bool = false
     var showSaved: Bool = false
@@ -95,6 +99,47 @@ final class SettingsViewModel {
         if (mode == .openclaw && agentId == "openclaw") ||
            (mode == .copaw && agentId == "copaw") {
             mode = .agent
+        }
+
+        // R4: sync personalization toggle from server (login required, otherwise stays default true)
+        await loadPersonalizationFromServer()
+    }
+
+    // MARK: - Personalization (R4)
+
+    func loadPersonalizationFromServer() async {
+        do {
+            guard let token = try await db.getSetting(key: "auth_token"), !token.isEmpty else {
+                return
+            }
+            let r = try await SafetyAPIService.shared.getPersonalization(authToken: token)
+            if r.ok, let enabled = r.enabled {
+                personalizationEnabled = enabled
+            }
+        } catch {
+            // network error — keep default
+        }
+    }
+
+    func togglePersonalization(_ next: Bool) async -> Bool {
+        let prev = personalizationEnabled
+        personalizationEnabled = next
+        personalizationLoading = true
+        defer { personalizationLoading = false }
+        do {
+            guard let token = try await db.getSetting(key: "auth_token"), !token.isEmpty else {
+                personalizationEnabled = prev
+                return false
+            }
+            let r = try await SafetyAPIService.shared.setPersonalization(enabled: next, authToken: token)
+            if r.ok {
+                return true
+            }
+            personalizationEnabled = prev
+            return false
+        } catch {
+            personalizationEnabled = prev
+            return false
         }
     }
 
