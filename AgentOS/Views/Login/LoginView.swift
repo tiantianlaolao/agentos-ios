@@ -17,9 +17,25 @@ struct LoginView: View {
 
                     // MARK: - Logo
                     VStack(spacing: 12) {
-                        Image(systemName: "cpu")
-                            .font(.system(size: 56))
-                            .foregroundStyle(AppTheme.primary)
+                        Group {
+                            if let path = Bundle.main.path(forResource: "happy", ofType: "jpg", inDirectory: "Resources/Avatar"),
+                               let uiImage = UIImage(contentsOfFile: path) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else if let path = Bundle.main.path(forResource: "happy", ofType: "jpg"),
+                                      let uiImage = UIImage(contentsOfFile: path) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Image(systemName: "cpu")
+                                    .font(.system(size: 56))
+                                    .foregroundStyle(AppTheme.primary)
+                            }
+                        }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
 
                         Text("AgentOS")
                             .font(.system(size: 28, weight: .bold))
@@ -28,20 +44,27 @@ struct LoginView: View {
                     .padding(.bottom, 36)
 
                     // MARK: - Tab Switcher
-                    HStack(spacing: 0) {
-                        tabButton(title: L10n.tr("login.loginTab"), isSelected: authViewModel.isLogin) {
-                            authViewModel.isLogin = true
-                            authViewModel.errorMessage = ""
+                    if !authViewModel.isResetMode {
+                        HStack(spacing: 0) {
+                            tabButton(title: L10n.tr("login.loginTab"), isSelected: authViewModel.isLogin) {
+                                authViewModel.isLogin = true
+                                authViewModel.errorMessage = ""
+                            }
+                            tabButton(title: L10n.tr("login.registerTab"), isSelected: !authViewModel.isLogin) {
+                                authViewModel.isLogin = false
+                                authViewModel.errorMessage = ""
+                            }
                         }
-                        tabButton(title: L10n.tr("login.registerTab"), isSelected: !authViewModel.isLogin) {
-                            authViewModel.isLogin = false
-                            authViewModel.errorMessage = ""
-                        }
+                        .background(AppTheme.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                        .padding(.horizontal, AppTheme.paddingXLarge)
+                        .padding(.bottom, 28)
+                    } else {
+                        Text(L10n.shared.locale == "zh" ? "重置密码" : "Reset Password")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .padding(.bottom, 28)
                     }
-                    .background(AppTheme.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-                    .padding(.horizontal, AppTheme.paddingXLarge)
-                    .padding(.bottom, 28)
 
                     // MARK: - Form Fields
                     VStack(spacing: 18) {
@@ -59,17 +82,90 @@ struct LoginView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
 
-                        // Password
-                        fieldSection(label: L10n.tr("login.password")) {
-                            secureField(
-                                text: $authViewModel.password,
-                                isVisible: showPassword,
-                                toggle: { showPassword.toggle() }
-                            )
+                        // Password (login/register only)
+                        if !authViewModel.isResetMode {
+                            fieldSection(label: L10n.tr("login.password")) {
+                                secureField(
+                                    text: $authViewModel.password,
+                                    isVisible: showPassword,
+                                    toggle: { showPassword.toggle() }
+                                )
+                            }
+
+                            // Forgot password link (login only)
+                            if authViewModel.isLogin {
+                                HStack {
+                                    Spacer()
+                                    Button {
+                                        authViewModel.isResetMode = true
+                                        authViewModel.errorMessage = ""
+                                        authViewModel.successMessage = ""
+                                    } label: {
+                                        Text(L10n.shared.locale == "zh" ? "忘记密码？" : "Forgot password?")
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(AppTheme.primary)
+                                    }
+                                }
+                                .padding(.top, -10)
+                            }
+                        }
+
+                        // Reset password fields
+                        if authViewModel.isResetMode {
+                            // SMS Code
+                            fieldSection(label: L10n.tr("login.code")) {
+                                HStack(spacing: 10) {
+                                    TextField("123456", text: $authViewModel.smsCode)
+                                        .keyboardType(.numberPad)
+                                        .autocorrectionDisabled()
+                                        .textInputAutocapitalization(.never)
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 13)
+                                        .background(AppTheme.surface)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                                    Button {
+                                        Task { await authViewModel.sendSmsCode() }
+                                    } label: {
+                                        Text(authViewModel.countdown > 0
+                                             ? L10n.tr("login.resendIn", ["seconds": "\(authViewModel.countdown)"])
+                                             : L10n.tr("login.sendCode"))
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 13)
+                                            .frame(minWidth: 100)
+                                            .background(authViewModel.countdown > 0
+                                                        ? AppTheme.border
+                                                        : AppTheme.primary)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    }
+                                    .disabled(authViewModel.countdown > 0)
+                                }
+                            }
+
+                            // New Password
+                            fieldSection(label: L10n.shared.locale == "zh" ? "新密码" : "New Password") {
+                                secureField(
+                                    text: $authViewModel.newPassword,
+                                    isVisible: showPassword,
+                                    toggle: { showPassword.toggle() }
+                                )
+                            }
+
+                            // Confirm New Password
+                            fieldSection(label: L10n.shared.locale == "zh" ? "确认新密码" : "Confirm New Password") {
+                                secureField(
+                                    text: $authViewModel.confirmNewPassword,
+                                    isVisible: showConfirmPassword,
+                                    toggle: { showConfirmPassword.toggle() }
+                                )
+                            }
                         }
 
                         // Register-only fields
-                        if !authViewModel.isLogin {
+                        if !authViewModel.isLogin && !authViewModel.isResetMode {
                             // Confirm Password
                             fieldSection(label: L10n.tr("login.confirmPassword")) {
                                 secureField(
@@ -114,7 +210,7 @@ struct LoginView: View {
                         }
 
                         // Agreement checkbox (register only)
-                        if !authViewModel.isLogin {
+                        if !authViewModel.isLogin && !authViewModel.isResetMode {
                             agreementCheckbox
                         }
 
@@ -127,45 +223,79 @@ struct LoginView: View {
                                 .padding(.horizontal, 4)
                         }
 
-                        // Submit Button
-                        Button {
-                            Task {
-                                if authViewModel.isLogin {
-                                    await authViewModel.login()
-                                } else {
-                                    await authViewModel.register()
-                                }
-                            }
-                        } label: {
-                            Group {
-                                if authViewModel.isLoading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text(authViewModel.isLogin ? L10n.tr("login.submit") : L10n.tr("login.register"))
-                                        .font(.system(size: 16, weight: .bold))
-                                }
-                            }
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(AppTheme.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                        // Success Message
+                        if !authViewModel.successMessage.isEmpty {
+                            Text(authViewModel.successMessage)
+                                .font(.system(size: 13))
+                                .foregroundStyle(.green)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
                         }
-                        .disabled(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms))
-                        .opacity(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms) ? 0.6 : 1)
-                        .padding(.top, 8)
 
-                        // Skip Login
-                        Button {
-                            authViewModel.skipLogin()
-                        } label: {
-                            Text(L10n.tr("login.skip"))
-                                .font(.system(size: 14))
-                                .foregroundStyle(AppTheme.textTertiary)
-                                .underline()
+                        // Submit Button
+                        if authViewModel.isResetMode {
+                            Button {
+                                Task { await authViewModel.resetPassword() }
+                            } label: {
+                                Group {
+                                    if authViewModel.isLoading {
+                                        ProgressView().tint(.white)
+                                    } else {
+                                        Text(L10n.shared.locale == "zh" ? "重置密码" : "Reset Password")
+                                            .font(.system(size: 16, weight: .bold))
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(AppTheme.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                            }
+                            .disabled(authViewModel.isLoading)
+                            .opacity(authViewModel.isLoading ? 0.6 : 1)
+                            .padding(.top, 8)
+
+                            Button {
+                                authViewModel.isResetMode = false
+                                authViewModel.errorMessage = ""
+                                authViewModel.successMessage = ""
+                            } label: {
+                                Text(L10n.shared.locale == "zh" ? "返回登录" : "Back to Login")
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                                    .underline()
+                            }
+                            .padding(.top, 16)
+                        } else {
+                            Button {
+                                Task {
+                                    if authViewModel.isLogin {
+                                        await authViewModel.login()
+                                    } else {
+                                        await authViewModel.register()
+                                    }
+                                }
+                            } label: {
+                                Group {
+                                    if authViewModel.isLoading {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Text(authViewModel.isLogin ? L10n.tr("login.submit") : L10n.tr("login.register"))
+                                            .font(.system(size: 16, weight: .bold))
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(AppTheme.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+                            }
+                            .disabled(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms))
+                            .opacity(authViewModel.isLoading || (!authViewModel.isLogin && !agreedToTerms) ? 0.6 : 1)
+                            .padding(.top, 8)
+
                         }
-                        .padding(.top, 16)
                     }
                     .padding(.horizontal, AppTheme.paddingXLarge)
 

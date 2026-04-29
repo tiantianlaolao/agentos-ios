@@ -10,8 +10,12 @@ final class AuthViewModel {
     var confirmPassword = ""
     var smsCode = ""
     var isLogin = true
+    var isResetMode = false
+    var newPassword = ""
+    var confirmNewPassword = ""
     var isLoading = false
     var errorMessage = ""
+    var successMessage = ""
 
     // MARK: - Auth State
 
@@ -56,14 +60,13 @@ final class AuthViewModel {
     func loadAuth() async {
         do {
             let token = try await DatabaseService.shared.getSetting(key: "auth_token")
-            let skipped = try await DatabaseService.shared.getSetting(key: "auth_skipped")
             let loggedIn = try await DatabaseService.shared.getSetting(key: "auth_loggedIn")
             let storedPhone = try await DatabaseService.shared.getSetting(key: "auth_phone")
             let storedCreatedAt = try await DatabaseService.shared.getSetting(key: "auth_createdAt")
             let storedPlan = try await DatabaseService.shared.getSetting(key: "auth_plan")
             let storedIsByok = try await DatabaseService.shared.getSetting(key: "auth_isByok")
             let storedPlanExpires = try await DatabaseService.shared.getSetting(key: "auth_planExpires")
-            isAuthenticated = (token != nil && !(token ?? "").isEmpty) || skipped == "true"
+            isAuthenticated = loggedIn == "true" && token != nil && !(token ?? "").isEmpty
             hasRealLogin = loggedIn == "true"
             savedPhone = storedPhone ?? ""
             userCreatedAt = storedCreatedAt.flatMap { Int64($0) }
@@ -200,8 +203,9 @@ final class AuthViewModel {
         errorMessage = ""
 
         do {
+            let endpoint = isResetMode ? "/auth/send-reset-code" : "/auth/send-code"
             let body: [String: String] = ["phone": trimmedPhone]
-            let result = try await postJSON(endpoint: "/auth/send-code", body: body)
+            let result = try await postJSON(endpoint: endpoint, body: body)
 
             if let ok = result["ok"] as? Bool, ok {
                 startCountdown()
@@ -214,11 +218,53 @@ final class AuthViewModel {
         }
     }
 
-    func skipLogin() {
-        Task {
-            try? await DatabaseService.shared.setSetting(key: "auth_skipped", value: "true")
-            isAuthenticated = true
+    func resetPassword() async {
+        let trimmedPhone = phone.trimmingCharacters(in: .whitespaces)
+        guard validatePhone(trimmedPhone) else { return }
+        guard !newPassword.isEmpty, newPassword.count >= 6 else {
+            errorMessage = L10n.shared.locale == "zh" ? "密码不能少于6位" : "Password must be at least 6 characters"
+            return
         }
+        guard newPassword == confirmNewPassword else {
+            errorMessage = L10n.shared.locale == "zh" ? "两次密码不一致" : "Passwords do not match"
+            return
+        }
+        guard !smsCode.isEmpty else {
+            errorMessage = L10n.shared.locale == "zh" ? "请输入验证码" : "Please enter verification code"
+            return
+        }
+
+        isLoading = true
+        errorMessage = ""
+
+        do {
+            let body: [String: String] = [
+                "phone": trimmedPhone,
+                "code": smsCode,
+                "newPassword": newPassword,
+            ]
+            let result = try await postJSON(endpoint: "/auth/reset-password", body: body)
+
+            if let ok = result["ok"] as? Bool, ok {
+                successMessage = L10n.shared.locale == "zh" ? "密码已重置，请重新登录" : "Password reset. Please login again."
+                newPassword = ""
+                confirmNewPassword = ""
+                smsCode = ""
+                // Switch back to login after 2 seconds
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    isResetMode = false
+                    successMessage = ""
+                }
+            } else {
+                let error = result["error"] as? String ?? "Reset failed"
+                errorMessage = error
+            }
+        } catch {
+            errorMessage = "Network error"
+        }
+
+        isLoading = false
     }
 
     var isDeletingAccount = false
@@ -268,7 +314,6 @@ final class AuthViewModel {
             try await DatabaseService.shared.setSetting(key: "auth_userId", value: "")
             try await DatabaseService.shared.setSetting(key: "auth_phone", value: "")
             try await DatabaseService.shared.setSetting(key: "auth_loggedIn", value: "false")
-            try await DatabaseService.shared.setSetting(key: "auth_skipped", value: "false")
         } catch {
             // Ignore cleanup errors
         }
@@ -313,7 +358,6 @@ final class AuthViewModel {
         try await DatabaseService.shared.setSetting(key: "auth_phone", value: phone)
         try await DatabaseService.shared.setSetting(key: "auth_token", value: token)
         try await DatabaseService.shared.setSetting(key: "auth_loggedIn", value: "true")
-        try await DatabaseService.shared.setSetting(key: "auth_skipped", value: "false")
         try await DatabaseService.shared.setSetting(key: "auth_plan", value: plan)
         try await DatabaseService.shared.setSetting(key: "auth_isByok", value: isByok ? "1" : "0")
         try await DatabaseService.shared.setSetting(key: "auth_planExpires", value: planExpires.map { String($0) } ?? "")
