@@ -54,34 +54,12 @@ jobs:
           mkdir -p ~/private_keys
           echo -n "$ASC_API_KEY_BASE64" | base64 --decode -o ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-      - name: Get latest TestFlight build number
-        id: buildnumber
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          TOKEN=$(ruby -e "
-            require 'jwt'
-            key = OpenSSL::PKey::EC.new(File.read(File.expand_path('~/private_keys/AuthKey_${ASC_KEY_ID}.p8')))
-            payload = { iss: '${ASC_ISSUER_ID}', iat: Time.now.to_i, exp: Time.now.to_i + 600, aud: 'appstoreconnect-v1' }
-            puts JWT.encode(payload, key, 'ES256', { kid: '${ASC_KEY_ID}', typ: 'JWT' })
-          " 2>/dev/null || echo "")
-
-          if [ -n "$TOKEN" ]; then
-            BUILDS=$(curl -s -H "Authorization: Bearer $TOKEN" \
-              "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=6759725374&sort=-version&limit=1")
-            LATEST=$(echo "$BUILDS" | ruby -rjson -e 'puts JSON.parse(STDIN.read)["data"]&.first&.dig("attributes","version") || "0"' 2>/dev/null || echo "0")
-            echo "latest=$LATEST" >> $GITHUB_OUTPUT
-            NEXT=$((LATEST + 1))
-          else
-            NEXT=14
-          fi
-          echo "next=$NEXT" >> $GITHUB_OUTPUT
-          echo "Next build number: $NEXT"
-
       - name: Set build number
         run: |
-          agvtool new-version -all ${{ steps.buildnumber.outputs.next }}
+          # Use git commit count as build number (always increases)
+          BUILD_NUM=$(git rev-list --count HEAD)
+          echo "Build number: $BUILD_NUM"
+          agvtool new-version -all $BUILD_NUM
 
       - name: Build archive
         env:
