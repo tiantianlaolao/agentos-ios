@@ -1,0 +1,240 @@
+name: Build iOS Ad-Hoc & Deploy OTA (test backend)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'adhoc-v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using Xcode: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Install certificates
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_DEV_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEV_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_DEV_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEV_CERTIFICATE_PASSWORD }}
+        run: |
+          DIST_CERT=$RUNNER_TEMP/dist.p12
+          DEV_CERT=$RUNNER_TEMP/dev.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 12)
+
+          echo -n "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERT
+          echo -n "$APPLE_DEV_CERTIFICATE_BASE64" | base64 --decode -o $DEV_CERT
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $DIST_CERT -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security import $DEV_CERT -P "$APPLE_DEV_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Install Ad-Hoc Provisioning Profile
+        env:
+          APPLE_ADHOC_PROFILE_BASE64: ${{ secrets.APPLE_ADHOC_PROFILE_BASE64 }}
+        run: |
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          echo -n "$APPLE_ADHOC_PROFILE_BASE64" | base64 --decode -o "$PROFILE_DIR/AgentOS_AdHoc.mobileprovision"
+
+          PROFILE_UUID=$(security cms -D -i "$PROFILE_DIR/AgentOS_AdHoc.mobileprovision" | plutil -extract UUID raw -)
+          PROFILE_NAME=$(security cms -D -i "$PROFILE_DIR/AgentOS_AdHoc.mobileprovision" | plutil -extract Name raw -)
+          echo "Profile UUID: $PROFILE_UUID"
+          echo "Profile Name: $PROFILE_NAME"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+          echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+
+      - name: Set build number
+        run: |
+          BUILD_NUM=$(git rev-list --count HEAD)
+          echo "Build number: $BUILD_NUM"
+          echo "BUILD_NUM=$BUILD_NUM" >> $GITHUB_ENV
+          agvtool new-version -all $BUILD_NUM
+
+      - name: Build archive (Release + ADHOC_TEST flag → test backend)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild archive \
+            -scheme AgentOS \
+            -project AgentOS.xcodeproj \
+            -archivePath $RUNNER_TEMP/AgentOS.xcarchive \
+            -sdk iphoneos \
+            -configuration Release \
+            DEVELOPMENT_TEAM=$APPLE_TEAM_ID \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="ADHOC_TEST" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Export IPA (ad-hoc)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > $RUNNER_TEMP/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>ad-hoc</string>
+            <key>teamID</key>
+            <string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.agentosplus.app</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/AgentOS.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export
+
+          ls -la $RUNNER_TEMP/export/
+
+      - name: Generate manifest.plist + install.html
+        run: |
+          VERSION=3.0.0
+          IPA_NAME="AgentOS-test-${BUILD_NUM}.ipa"
+          mv $RUNNER_TEMP/export/AgentOS.ipa $RUNNER_TEMP/export/$IPA_NAME
+          echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
+
+          cat > $RUNNER_TEMP/export/manifest.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>items</key>
+            <array>
+              <dict>
+                <key>assets</key>
+                <array>
+                  <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>https://agentos.tybbtech.com:3201/test-install/${IPA_NAME}</string>
+                  </dict>
+                </array>
+                <key>metadata</key>
+                <dict>
+                  <key>bundle-identifier</key>
+                  <string>com.agentosplus.app</string>
+                  <key>bundle-version</key>
+                  <string>${VERSION}</string>
+                  <key>kind</key>
+                  <string>software</string>
+                  <key>title</key>
+                  <string>AgentOS Test</string>
+                </dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+          BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          cat > $RUNNER_TEMP/export/install.html <<HTML
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>AgentOS 测试包安装</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px 20px; max-width: 480px; margin: 0 auto; text-align: center; background: #f5f5f7; }
+              h1 { color: #007AFF; margin-bottom: 8px; }
+              .tag { background: #FF9500; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; display: inline-block; }
+              .install { display: inline-block; background: #007AFF; color: white; padding: 18px 48px; border-radius: 14px; text-decoration: none; font-size: 18px; font-weight: 600; margin: 24px 0; box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
+              .install:active { background: #0051D5; }
+              .meta { color: #666; font-size: 14px; line-height: 1.7; background: white; padding: 16px; border-radius: 12px; margin-top: 16px; text-align: left; }
+              .warn { color: #FF3B30; font-size: 13px; margin-top: 16px; }
+            </style>
+          </head>
+          <body>
+            <h1>AgentOS</h1>
+            <p><span class="tag">测试包</span></p>
+            <p>连接 agentos-test 后端</p>
+            <p><a class="install" href="itms-services://?action=download-manifest&amp;url=https://agentos.tybbtech.com:3201/test-install/manifest.plist">安装 Install</a></p>
+            <div class="meta">
+              <strong>版本</strong>: ${VERSION} (build ${BUILD_NUM})<br>
+              <strong>构建时间</strong>: ${BUILD_TIME}<br>
+              <strong>后端</strong>: agentos-test (port 3200)<br>
+              <strong>包名</strong>: ${IPA_NAME}
+            </div>
+            <p class="warn">必须用 Safari 打开此页面。装完后回到桌面 → 设置 → 通用 → VPN 与设备管理 → 信任开发者证书。</p>
+          </body>
+          </html>
+          HTML
+
+          ls -la $RUNNER_TEMP/export/
+
+      - name: Deploy to OTA server
+        env:
+          OTA_SSH_HOST: ${{ secrets.OTA_SSH_HOST }}
+          OTA_SSH_USER: ${{ secrets.OTA_SSH_USER }}
+          OTA_SSH_PASSWORD: ${{ secrets.OTA_SSH_PASSWORD }}
+        run: |
+          brew install hudochenkov/sshpass/sshpass
+
+          sshpass -p "$OTA_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $OTA_SSH_USER@$OTA_SSH_HOST \
+            'mkdir -p /var/www/test-install && rm -f /var/www/test-install/*.ipa /var/www/test-install/manifest.plist /var/www/test-install/install.html'
+
+          sshpass -p "$OTA_SSH_PASSWORD" scp -o StrictHostKeyChecking=no \
+            "$RUNNER_TEMP/export/$IPA_NAME" \
+            "$RUNNER_TEMP/export/manifest.plist" \
+            "$RUNNER_TEMP/export/install.html" \
+            $OTA_SSH_USER@$OTA_SSH_HOST:/var/www/test-install/
+
+          sshpass -p "$OTA_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $OTA_SSH_USER@$OTA_SSH_HOST \
+            'ls -la /var/www/test-install/'
+
+      - name: Print install URL
+        run: |
+          echo "=========================================="
+          echo " OTA Install URL (open in iPhone Safari):"
+          echo " https://agentos.tybbtech.com:3201/test-install/install.html"
+          echo "=========================================="
+          echo " Build: 3.0.0 (${BUILD_NUM})"
+          echo " IPA: ${IPA_NAME}"
+          echo "=========================================="
+
+      - name: Clean up
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true

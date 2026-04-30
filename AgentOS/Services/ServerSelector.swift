@@ -3,8 +3,13 @@ import Foundation
 /// Shared server config — all code reads from here (thread-safe)
 final class ServerConfig: Sendable {
     static let shared = ServerConfig()
+    #if DEBUG || ADHOC_TEST
+    nonisolated(unsafe) private(set) var httpBaseURL = "https://agentos.tybbtech.com:3201"
+    nonisolated(unsafe) private(set) var wsURL = "wss://agentos.tybbtech.com:3201/ws"
+    #else
     nonisolated(unsafe) private(set) var httpBaseURL = "https://agentos.tybbtech.com"
     nonisolated(unsafe) private(set) var wsURL = "wss://agentos.tybbtech.com/ws"
+    #endif
 
     func update(wsUrl: String) {
         self.wsURL = wsUrl
@@ -21,7 +26,7 @@ enum ServerSelector {
         let http: String
     }
 
-    #if DEBUG
+    #if DEBUG || ADHOC_TEST
     static let servers: [ServerNode] = [
         ServerNode(name: "test", ws: "wss://agentos.tybbtech.com:3201/ws", http: "https://agentos.tybbtech.com:3201"),
     ]
