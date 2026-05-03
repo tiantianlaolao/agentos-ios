@@ -48,6 +48,9 @@ struct SettingsView: View {
                 if authViewModel.isLoggedIn {
                     membershipEntry
                         .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                    changelogEntry
+                        .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                 }
 
@@ -205,6 +208,58 @@ struct SettingsView: View {
             .padding(.vertical, 12)
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private var changelogEntry: some View {
+        Button {
+            Task { @MainActor in
+                viewModel.changelogStatus = "正在检查..."
+                viewModel.showChangelogStatus = true
+                await ChangelogService.shared.refresh(force: true)
+                let r = ChangelogService.shared.response
+                if let r = r {
+                    viewModel.changelogStatus = """
+                    ✓ 拉取成功
+                    最新: v\(r.latest_version ?? "-")
+                    本机: v\(ChangelogService.shared.currentVersion)
+                    versions 数: \(r.versions.count)
+                    should_show_pre: \(r.should_show_pre)
+                    should_show_post: \(r.should_show_post)
+                    user_last_seen.pre: \(r.user_last_seen?.pre_version ?? "nil")
+                    user_last_seen.post: \(r.user_last_seen?.post_version ?? "nil")
+                    """
+                } else {
+                    viewModel.changelogStatus = "✗ 拉取失败 (response 仍为 nil) — 检查网络/Token/cert"
+                }
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color(hex: "#0891b2"))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("检查版本更新")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("点击手动调用 /api/changelog 测试")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+                Spacer()
+                Image(systemName: "info.circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(AppTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .alert("Changelog 状态", isPresented: $viewModel.showChangelogStatus) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.changelogStatus)
         }
     }
 
