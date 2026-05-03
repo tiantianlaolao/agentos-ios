@@ -112,6 +112,18 @@ class StoreService {
             return false
         }
 
+        // Read app receipt — server verifies this with Apple, then trusts only
+        // Apple's parsed transaction info (we no longer send transactionId).
+        guard let receiptURL = Bundle.main.appStoreReceiptURL,
+              FileManager.default.fileExists(atPath: receiptURL.path),
+              let receiptBytes = try? Data(contentsOf: receiptURL),
+              !receiptBytes.isEmpty else {
+            print("[Store] No app receipt available")
+            errorMessage = "未找到购买凭证，请重启 App 后重试"
+            return false
+        }
+        let receiptData = receiptBytes.base64EncodedString()
+
         let baseURL = ServerConfig.shared.httpBaseURL
         guard let url = URL(string: "\(baseURL)/api/subscription/apple-verify") else { return false }
 
@@ -121,9 +133,8 @@ class StoreService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let body: [String: Any] = [
-            "transactionId": String(transaction.id),
+            "receiptData": receiptData,
             "productId": productId,
-            "originalTransactionId": String(transaction.originalID),
         ]
 
         guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return false }
@@ -133,24 +144,35 @@ class StoreService {
             let (data, response) = try await URLSession.shared.data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let serverError = json?["error"] as? String
 
-            if statusCode == 403 {
-                // Subscription bound to another account
-                let errMsg = json?["error"] as? String ?? "此订阅已关联其他账号"
-                print("[Store] IAP binding rejected: \(errMsg)")
-                errorMessage = errMsg
+            switch statusCode {
+            case 200:
+                if let ok = json?["ok"] as? Bool, ok {
+                    print("[Store] Server verified OK, product=\(productId)")
+                    return true
+                }
                 return false
-            }
-
-            guard statusCode == 200 else {
+            case 400:
+                // Could be: 缺 receiptData (老版本)、Apple 验证失败、sandbox-in-prod
+                let msg = serverError ?? "购买验证失败"
+                print("[Store] Server verify rejected: \(msg)")
+                errorMessage = msg
+                return false
+            case 403:
+                let msg = serverError ?? "此订阅已关联其他账号"
+                print("[Store] IAP binding rejected: \(msg)")
+                errorMessage = msg
+                return false
+            case 503:
+                print("[Store] IAP channel unavailable: \(serverError ?? "503")")
+                errorMessage = serverError ?? "支付通道维护中，请稍后再试"
+                return false
+            default:
                 print("[Store] Server verify failed: status \(statusCode)")
+                if let msg = serverError { errorMessage = msg }
                 return false
             }
-            if let ok = json?["ok"] as? Bool, ok {
-                print("[Store] Server verified OK, product=\(productId)")
-                return true
-            }
-            return false
         } catch {
             print("[Store] Server verify error: \(error)")
             return false
