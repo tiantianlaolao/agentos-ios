@@ -45,7 +45,7 @@ struct QuotaBarView: View {
                 if let result = await UsageService.shared.fetch(token: t) {
                     await MainActor.run {
                         self.usage = result
-                        authViewModel.setPlan(plan: result.plan, planExpires: nil, isByok: result.isByok)
+                        authViewModel.setPlan(plan: result.plan, planExpires: result.planExpires, isByok: result.isByok)
                     }
                     return
                 }
