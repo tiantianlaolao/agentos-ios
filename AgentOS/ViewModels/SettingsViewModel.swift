@@ -3,10 +3,6 @@ import Foundation
 @MainActor
 @Observable
 final class SettingsViewModel {
-    // Changelog diagnostic
-    var showChangelogStatus: Bool = false
-    var changelogStatus: String = ""
-
     // Connection
     var mode: ConnectionMode = .builtin
     var builtinSubMode: String = "free" // "free" or "byok"

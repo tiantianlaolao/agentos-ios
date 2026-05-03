@@ -213,41 +213,35 @@ struct SettingsView: View {
 
     private var changelogEntry: some View {
         Button {
-            Task { @MainActor in
-                viewModel.changelogStatus = "正在检查..."
-                viewModel.showChangelogStatus = true
-                await ChangelogService.shared.refresh(force: true)
-                let r = ChangelogService.shared.response
-                if let r = r {
-                    viewModel.changelogStatus = """
-                    ✓ 拉取成功
-                    最新: v\(r.latest_version ?? "-")
-                    本机: v\(ChangelogService.shared.currentVersion)
-                    versions 数: \(r.versions.count)
-                    should_show_pre: \(r.should_show_pre)
-                    should_show_post: \(r.should_show_post)
-                    user_last_seen.pre: \(r.user_last_seen?.pre_version ?? "nil")
-                    user_last_seen.post: \(r.user_last_seen?.post_version ?? "nil")
-                    """
-                } else {
-                    viewModel.changelogStatus = "✗ 拉取失败 (response 仍为 nil) — 检查网络/Token/cert"
+            // Open public changelog page in browser. This counts as
+            // "viewed" — ack the post mode for the latest version so
+            // the red dot clears.
+            ChangelogService.shared.openChangelogPage()
+            if let latest = ChangelogService.shared.response?.latest_version {
+                Task {
+                    await ChangelogService.shared.ack(version: latest, mode: .post, action: .clicked_detail)
                 }
             }
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                Image(systemName: "sparkles")
                     .font(.system(size: 16))
                     .foregroundStyle(Color(hex: "#0891b2"))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("检查版本更新")
+                    Text("版本日志")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("点击手动调用 /api/changelog 测试")
+                    Text(changelogSubtitle)
                         .font(.system(size: 12))
                         .foregroundStyle(AppTheme.textTertiary)
                 }
                 Spacer()
-                Image(systemName: "info.circle")
+                if ChangelogService.shared.hasUnseenChangelog {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                }
+                Image(systemName: "arrow.up.right.square")
                     .font(.system(size: 13))
                     .foregroundStyle(AppTheme.textTertiary)
             }
@@ -256,11 +250,14 @@ struct SettingsView: View {
             .background(AppTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .alert("Changelog 状态", isPresented: $viewModel.showChangelogStatus) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(viewModel.changelogStatus)
+    }
+
+    private var changelogSubtitle: String {
+        let cur = ChangelogService.shared.currentVersion
+        if let latest = ChangelogService.shared.response?.latest_version, latest != cur {
+            return "当前 v\(cur) · 最新 v\(latest)"
         }
+        return "当前 v\(cur)"
     }
 
     private var accountSection: some View {

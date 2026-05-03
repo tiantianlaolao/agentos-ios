@@ -70,6 +70,7 @@ struct MainTabView: View {
             .tabItem {
                 Label(L10n.tr("tabs.settings"), systemImage: "gearshape")
             }
+            .badge(changelog.hasUnseenChangelog ? "•" : nil)
             .tag(3)
         }
         .tint(AppTheme.primary)
