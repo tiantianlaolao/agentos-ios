@@ -83,7 +83,7 @@ struct MembershipView: View {
                 .padding(.top, 4)
 
                 // CS link
-                Button("遇到问题？联系在线客服") {
+                Button("遇到问题？联系灵犀客服") {
                     showCSWebView = true
                 }
                 .font(.system(size: 13))
@@ -111,7 +111,7 @@ struct MembershipView: View {
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
                 CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
-                    .navigationTitle("在线客服")
+                    .navigationTitle("灵犀客服")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -171,30 +171,39 @@ struct MembershipView: View {
         )
     }
 
-    // MARK: - Benefits Grid
+    // MARK: - Compare Table (Free vs Member)
 
     private var benefitsGrid: some View {
-        let items: [(icon: String, label: String, value: String)] = [
-            ("💬", "对话", "300次/天"),
-            ("🔍", "搜索", "30次/天"),
-            ("🎨", "图片", "60张/月"),
-            ("🤖", "主动关怀", "智能推送"),
-            ("🔑", "BYOK", "自带Key"),
-            ("📊", "回测", "无限次"),
+        let rows: [(label: String, free: String, paid: String)] = [
+            ("💬 对话",     "20条/天", "300条/天"),
+            ("🔍 搜索",     "3次/天",  "30次/天"),
+            ("🎨 图片",     "30张/月", "60张/月"),
+            ("📊 回测",     "3次/天",  "无限次"),
+            ("🤖 主动关怀", "不可用",  "智能推送"),
+            ("🔑 BYOK",     "不可用",  "自带Key"),
         ]
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
-            ForEach(items, id: \.label) { item in
-                VStack(spacing: 4) {
-                    Text(item.icon).font(.system(size: 20))
-                    Text(item.label).font(.system(size: 12)).foregroundStyle(AppTheme.textTertiary)
-                    Text(item.value).font(.system(size: 13, weight: .semibold)).foregroundStyle(AppTheme.textPrimary)
+        return VStack(spacing: 0) {
+            // Header row
+            HStack {
+                Text("项目").font(.system(size: 12)).foregroundStyle(AppTheme.textTertiary).frame(maxWidth: .infinity, alignment: .leading)
+                Text("免费档").font(.system(size: 12)).foregroundStyle(AppTheme.textTertiary).frame(maxWidth: .infinity, alignment: .center)
+                Text("会员档").font(.system(size: 12)).foregroundStyle(AppTheme.textTertiary).frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(AppTheme.background)
+            // Rows
+            ForEach(rows, id: \.label) { row in
+                Divider()
+                HStack {
+                    Text(row.label).font(.system(size: 13, weight: .medium)).foregroundStyle(AppTheme.textPrimary).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(row.free).font(.system(size: 13)).foregroundStyle(AppTheme.textTertiary).frame(maxWidth: .infinity, alignment: .center)
+                    Text(row.paid).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color(red: 217/255, green: 119/255, blue: 6/255)).frame(maxWidth: .infinity, alignment: .center)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(AppTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 14).padding(.vertical, 10)
             }
         }
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Pricing Section

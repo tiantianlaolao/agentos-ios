@@ -120,7 +120,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
                 CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
-                    .navigationTitle("在线客服")
+                    .navigationTitle("灵犀客服")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -1019,7 +1019,7 @@ struct SettingsView: View {
                 Text(" · ")
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textTertiary)
-                Button("在线客服") {
+                Button("灵犀客服") {
                     showCSWebView = true
                 }
                 .font(.system(size: 12))
