@@ -15,6 +15,8 @@ struct SkillManifestInfo: Codable, Sendable, Identifiable, Equatable {
     var emoji: String?
     var eligible: Bool?
     var source: String?
+    /// Whether this is a public default skill (cannot be uninstalled)
+    var isDefault: Bool?
     var functions: [SkillFunction]
     var locales: [String: SkillLocale]?
 

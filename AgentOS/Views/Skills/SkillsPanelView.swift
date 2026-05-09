@@ -133,6 +133,24 @@ struct SkillsPanelView: View {
 
     // MARK: - Installed List
 
+    /// Public default skills (built-in, cannot be uninstalled)
+    private var defaultSkills: [SkillManifestInfo] {
+        guard viewModel.canToggleSkills else { return [] }
+        return viewModel.filteredInstalledSkills.filter { skill in
+            (skill.isDefault ?? false) && (skill.visibility ?? "public") == "public"
+        }
+    }
+
+    /// User-installed non-default skills (uninstallable)
+    private var userInstalledSkills: [SkillManifestInfo] {
+        if !viewModel.canToggleSkills {
+            return viewModel.filteredInstalledSkills
+        }
+        return viewModel.filteredInstalledSkills.filter { skill in
+            !((skill.isDefault ?? false) && (skill.visibility ?? "public") == "public")
+        }
+    }
+
     private var installedList: some View {
         Group {
             if viewModel.isLoading {
@@ -160,15 +178,34 @@ struct SkillsPanelView: View {
                 }
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(viewModel.filteredInstalledSkills) { skill in
-                            InstalledSkillRow(
-                                skill: skill,
-                                canToggle: viewModel.canToggleSkills,
-                                onToggle: { enabled in
-                                    viewModel.toggleSkill(name: skill.name, enabled: enabled)
-                                }
-                            )
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if !defaultSkills.isEmpty {
+                            Text(L10n.tr("chat.defaultSkills"))
+                                .font(AppTheme.captionFont.weight(.semibold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .padding(.top, 8)
+                            ForEach(defaultSkills) { skill in
+                                InstalledSkillRow(
+                                    skill: skill,
+                                    isDefaultPublic: true,
+                                    onUninstall: {}
+                                )
+                            }
+                        }
+                        if !userInstalledSkills.isEmpty {
+                            Text(L10n.tr("chat.installedSkills"))
+                                .font(AppTheme.captionFont.weight(.semibold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .padding(.top, defaultSkills.isEmpty ? 8 : 12)
+                            ForEach(userInstalledSkills) { skill in
+                                InstalledSkillRow(
+                                    skill: skill,
+                                    isDefaultPublic: false,
+                                    onUninstall: {
+                                        viewModel.uninstallSkill(name: skill.name, agentType: "builtin")
+                                    }
+                                )
+                            }
                         }
                     }
                     .padding(.horizontal, AppTheme.paddingLarge)
@@ -258,8 +295,10 @@ struct SkillsPanelView: View {
 
 private struct InstalledSkillRow: View {
     let skill: SkillManifestInfo
-    let canToggle: Bool
-    let onToggle: (Bool) -> Void
+    let isDefaultPublic: Bool
+    let onUninstall: () -> Void
+
+    @State private var showConfirm = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -290,18 +329,41 @@ private struct InstalledSkillRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if canToggle {
-                Toggle("", isOn: Binding(
-                    get: { skill.enabled },
-                    set: { onToggle($0) }
-                ))
-                .labelsHidden()
-                .tint(AppTheme.primary)
+            if isDefaultPublic {
+                Text(L10n.tr("skills.bundledReadonly"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.textTertiary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                // Read-only status indicator
-                Circle()
-                    .fill(skill.enabled ? AppTheme.success : AppTheme.textTertiary)
-                    .frame(width: 8, height: 8)
+                Button {
+                    showConfirm = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11))
+                        Text(L10n.tr("skills.uninstall"))
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundStyle(AppTheme.error)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(AppTheme.error, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .alert(L10n.tr("skills.uninstall"), isPresented: $showConfirm) {
+                    Button(L10n.tr("skills.cancel"), role: .cancel) {}
+                    Button(L10n.tr("skills.uninstall"), role: .destructive) {
+                        onUninstall()
+                    }
+                } message: {
+                    Text("\(L10n.tr("skills.uninstallConfirm")) \"\(skill.name)\"?")
+                }
             }
         }
         .padding(12)

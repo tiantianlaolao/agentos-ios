@@ -7,6 +7,7 @@ struct SkillStoreView: View {
     @State private var addSkillMode: AddSkillMode?
     @State private var addSkillAgentType: String = "builtin"
     @State private var showBacktestWorkstation = false
+    @State private var applyPublishAlert = false
 
     private enum AddSkillMode: String, Identifiable {
         case http, skillmd, generate
@@ -65,6 +66,11 @@ struct SkillStoreView: View {
             }
             .navigationTitle(L10n.tr("skills.store"))
             .navigationBarTitleDisplayMode(.inline)
+            .alert(L10n.tr("skills.applyPublishComingSoon"), isPresented: $applyPublishAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(L10n.tr("skills.applyPublishComingSoonMsg"))
+            }
             // External Agent picker retired 2026-04-19 — skills always install to builtin
             // Skill add methods menu (simplified: no agent picker)
             .confirmationDialog(L10n.tr("skills.builtinMethods"), isPresented: $showAddSkillSheet) {
@@ -382,35 +388,51 @@ struct SkillStoreView: View {
                 VStack(spacing: 4) {
                     if skill.visibility == "private" {
                         Button {
-                            // Apply publish action placeholder
+                            applyPublishAlert = true
                         } label: {
                             Text(L10n.tr("skills.applyPublish"))
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(AppTheme.warning)
+                                .foregroundStyle(AppTheme.textTertiary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .overlay(
-                                    Capsule().stroke(AppTheme.warning, lineWidth: 1)
+                                    Capsule().stroke(AppTheme.textTertiary, lineWidth: 1)
                                 )
+                                .opacity(0.7)
                         }
                     }
                     if skill.installed {
-                        VStack(spacing: 4) {
-                            Button {
-                                handleUninstall(skill)
-                            } label: {
-                                Text(L10n.tr("skills.uninstall"))
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(AppTheme.error)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .overlay(
-                                        Capsule().stroke(AppTheme.error, lineWidth: 1)
-                                    )
+                        if skill.isDefault && (skill.visibility == "public" || skill.visibility.isEmpty) {
+                            // Public default skill — show built-in chip, no uninstall
+                            HStack(spacing: 3) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 10))
+                                Text(L10n.tr("skills.bundledReadonly"))
+                                    .font(.system(size: 11, weight: .medium))
                             }
-                            Text(L10n.tr("skills.installedBadge"))
-                                .font(AppTheme.smallFont.weight(.semibold))
-                                .foregroundStyle(AppTheme.success)
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(AppTheme.background)
+                            .clipShape(Capsule())
+                        } else {
+                            VStack(spacing: 4) {
+                                Button {
+                                    handleUninstall(skill)
+                                } label: {
+                                    Text(L10n.tr("skills.uninstall"))
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(AppTheme.error)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .overlay(
+                                            Capsule().stroke(AppTheme.error, lineWidth: 1)
+                                        )
+                                }
+                                Text(L10n.tr("skills.installedBadge"))
+                                    .font(AppTheme.smallFont.weight(.semibold))
+                                    .foregroundStyle(AppTheme.success)
+                            }
                         }
                     } else {
                         Button {
