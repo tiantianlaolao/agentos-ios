@@ -8,6 +8,7 @@ struct SkillStoreView: View {
     @State private var addSkillAgentType: String = "builtin"
     @State private var showBacktestWorkstation = false
     @State private var applyPublishAlert = false
+    @State private var expandedSkills: Set<String> = []
 
     private enum AddSkillMode: String, Identifiable {
         case http, skillmd, generate
@@ -349,7 +350,7 @@ struct SkillStoreView: View {
                             .lineLimit(1)
                         auditBadge(skill.audit)
                         if skill.name == "proactive" || skill.name == "public-link" {
-                            Text("会员专属")
+                            Text(L10n.tr("skills.memberOnly"))
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 5)
@@ -370,7 +371,7 @@ struct SkillStoreView: View {
                     Text(skill.localizedDescription(language: lang))
                         .font(AppTheme.captionFont)
                         .foregroundStyle(AppTheme.textSecondary)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         if skill.installCount > 0 {
                             HStack(spacing: 2) {
@@ -492,6 +493,57 @@ struct SkillStoreView: View {
                         }
                     }
                     .padding(.leading, 52)
+                }
+            }
+
+            // Functions list (collapsed by default, expand on tap)
+            if !skill.functions.isEmpty {
+                let isExpanded = expandedSkills.contains(skill.name)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if isExpanded {
+                            expandedSkills.remove(skill.name)
+                        } else {
+                            expandedSkills.insert(skill.name)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(isExpanded
+                             ? L10n.tr("skills.collapseFunctions")
+                             : L10n.tr("skills.expandFunctions", ["count": "\(skill.functions.count)"]))
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AppTheme.primary)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+
+                if isExpanded {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(skill.functions, id: \.name) { fn in
+                            HStack(alignment: .top, spacing: 6) {
+                                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                                    .padding(.top, 2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(fn.name)
+                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(AppTheme.primary)
+                                    Text(skill.locales?[lang]?.functions?[fn.name] ?? fn.description)
+                                        .font(AppTheme.smallFont)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .background(AppTheme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
             }
         }

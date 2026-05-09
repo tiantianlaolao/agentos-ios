@@ -300,6 +300,8 @@ private struct InstalledSkillRow: View {
 
     @State private var showConfirm = false
 
+    private var lang: String { L10n.shared.locale }
+
     var body: some View {
         HStack(spacing: 12) {
             Text(skill.emoji ?? "")
@@ -308,12 +310,12 @@ private struct InstalledSkillRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(skill.name)
+                    Text(skill.localizedName(language: lang))
                         .font(AppTheme.bodyFont.weight(.medium))
                         .foregroundStyle(AppTheme.textPrimary)
                         .lineLimit(1)
                     if skill.name == "proactive" || skill.name == "public-link" {
-                        Text("会员专属")
+                        Text(L10n.tr("skills.memberOnly"))
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
@@ -322,7 +324,7 @@ private struct InstalledSkillRow: View {
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                 }
-                Text(skill.description)
+                Text(skill.localizedDescription(language: lang))
                     .font(AppTheme.captionFont)
                     .foregroundStyle(AppTheme.textSecondary)
                     .lineLimit(2)
