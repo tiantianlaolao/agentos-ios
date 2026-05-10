@@ -192,10 +192,8 @@ struct MembershipView: View {
     private func applyClaim() async {
         claimError = ""
         let code = claimCodeInput.trimmingCharacters(in: .whitespaces)
-        guard code.range(of: #"^[1-9]\d{5}$"#, options: .regularExpression) != nil else {
-            claimError = L10n.tr("invite.applyFormatErr")
-            return
-        }
+        guard !code.isEmpty else { return }
+        // 5-10: removed client regex — server is single source of truth.
         guard let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? nil else {
             return
         }

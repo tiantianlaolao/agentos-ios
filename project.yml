@@ -31,8 +31,8 @@ targets:
       base:
         INFOPLIST_FILE: AgentOS/Resources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.agentosplus.app
-        MARKETING_VERSION: "3.0.7"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "3.0.12"
+        CURRENT_PROJECT_VERSION: "4"
         DEVELOPMENT_TEAM: 8J6A847P66
         CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

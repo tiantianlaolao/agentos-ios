@@ -163,8 +163,11 @@ final class AuthViewModel {
                 "password": password,
                 "code": smsCode,
             ]
+            // 5-10: client no longer validates inviteCode format — pass through
+            // whatever user typed (non-empty) and let server be the single source
+            // of truth for format / existence / expiry checks.
             let trimmedInvite = inviteCode.trimmingCharacters(in: .whitespaces)
-            if trimmedInvite.range(of: "^[1-9][0-9]{5}$", options: .regularExpression) != nil {
+            if !trimmedInvite.isEmpty {
                 body["inviteCode"] = trimmedInvite
             }
             let result = try await postJSON(endpoint: "/auth/register", body: body)
