@@ -34,11 +34,14 @@ struct SettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
-                // Current mode indicator bar
-                currentModeBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
+                // Invite friends entry — replaces the deprecated currentModeBar (5-10).
+                // Hidden if not logged in (invite system requires auth).
+                if authViewModel.isLoggedIn {
+                    inviteEntry
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                }
 
                 // Account section
                 accountSection
@@ -131,39 +134,37 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Current Mode Bar
+    // MARK: - Invite Entry (replaces deprecated currentModeBar 5-10)
 
-    private var currentModeBar: some View {
-        let modeInfo = modes.first { $0.key == viewModel.mode }
-        let modeColor = modeInfo?.color ?? AppTheme.success
-        let modeName = L10n.tr(modeInfo?.titleKey ?? "settings.builtin")
+    @State private var showInviteSheet = false
 
-        return HStack(spacing: 10) {
-            Circle()
-                .fill(modeColor)
-                .frame(width: 8, height: 8)
-            Text(L10n.tr("settings.currentMode"))
-                .font(.system(size: 13))
-                .foregroundStyle(AppTheme.textTertiary)
-            Text(modeName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(modeColor)
-            if viewModel.mode == .builtin && viewModel.builtinSubMode == "byok" {
-                Text("(\(L10n.tr("settings.builtinByok")))")
-                    .font(.system(size: 11))
-                    .foregroundStyle(modeColor.opacity(0.8))
+    private var inviteEntry: some View {
+        Button(action: { showInviteSheet = true }) {
+            HStack(spacing: 12) {
+                Text("🎁").font(.system(size: 28))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.tr("settings.inviteFriendsTitle"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color(hex: "#6B3410"))
+                    Text(L10n.tr("settings.inviteFriendsSub"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color(hex: "#9A5A2C"))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Color(hex: "#C26A1B"))
             }
-            // External Agent label retired 2026-04-19
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(LinearGradient(colors: [Color(hex: "#FFE5C4"), Color(hex: "#FFCC8A")],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "#FFA040"), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(modeColor.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(modeColor.opacity(0.2), lineWidth: 0.5)
-        )
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showInviteSheet) {
+            InviteView(authViewModel: authViewModel)
+        }
     }
 
     // MARK: - Account Section

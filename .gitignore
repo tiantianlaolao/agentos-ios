@@ -37,3 +37,9 @@ fastlane/test_output
 
 # Environment
 .env
+
+# Local helper scripts (may contain plaintext credentials, NEVER commit)
+_*.py
+_*.sh
+_*.mjs
+deploy_*.py

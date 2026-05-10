@@ -207,6 +207,34 @@ struct LoginView: View {
                                     .disabled(authViewModel.countdown > 0)
                                 }
                             }
+
+                            // Invite code (register only, optional)
+                            fieldSection(label: L10n.tr("settings.inviteCodeOptional")) {
+                                TextField("123456", text: $authViewModel.inviteCode)
+                                    .keyboardType(.numberPad)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.never)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 13)
+                                    .background(AppTheme.surface)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .onChange(of: authViewModel.inviteCode) { _, newValue in
+                                        // Restrict to 6 digits
+                                        let digits = newValue.filter(\.isNumber).prefix(6)
+                                        if digits != newValue {
+                                            authViewModel.inviteCode = String(digits)
+                                        }
+                                    }
+                            }
+                            .onAppear {
+                                // Sniff clipboard for invite code on entering register mode
+                                if authViewModel.inviteCode.isEmpty,
+                                   let clipboardText = UIPasteboard.general.string,
+                                   let code = InviteService.extractInviteCode(from: clipboardText) {
+                                    authViewModel.inviteCode = code
+                                }
+                            }
                         }
 
                         // Agreement checkbox (register only)

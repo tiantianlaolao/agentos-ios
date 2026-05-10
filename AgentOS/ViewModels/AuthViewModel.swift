@@ -9,6 +9,7 @@ final class AuthViewModel {
     var password = ""
     var confirmPassword = ""
     var smsCode = ""
+    var inviteCode = ""
     var isLogin = true
     var isResetMode = false
     var newPassword = ""
@@ -157,11 +158,15 @@ final class AuthViewModel {
         errorMessage = ""
 
         do {
-            let body: [String: String] = [
+            var body: [String: String] = [
                 "phone": trimmedPhone,
                 "password": password,
                 "code": smsCode,
             ]
+            let trimmedInvite = inviteCode.trimmingCharacters(in: .whitespaces)
+            if trimmedInvite.range(of: "^[1-9][0-9]{5}$", options: .regularExpression) != nil {
+                body["inviteCode"] = trimmedInvite
+            }
             let result = try await postJSON(endpoint: "/auth/register", body: body)
 
             if let ok = result["ok"] as? Bool, ok,
