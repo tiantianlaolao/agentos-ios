@@ -184,22 +184,49 @@ struct InviteView: View {
 
     // MARK: - Poster Sheet
 
+    @State private var posterUIImage: UIImage?
+
     private var posterSheet: some View {
         ZStack(alignment: .topTrailing) {
             Color.black.ignoresSafeArea()
-            if let url = InviteService.shared.posterURL(code: code) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView().tint(.white)
-                    case .success(let img):
-                        img.resizable().scaledToFit().padding(20)
-                    case .failure:
-                        Text("Failed to load poster").foregroundStyle(.white)
-                    @unknown default:
-                        EmptyView()
+            VStack {
+                Spacer()
+                if let url = InviteService.shared.posterURL(code: code) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView().tint(.white)
+                        case .success(let img):
+                            img.resizable().scaledToFit().padding(20)
+                                .onAppear {
+                                    // Cache the rendered image so we can save it
+                                    Task {
+                                        if let (data, _) = try? await URLSession.shared.data(from: url) {
+                                            posterUIImage = UIImage(data: data)
+                                        }
+                                    }
+                                }
+                        case .failure:
+                            Text("Failed to load poster").foregroundStyle(.white)
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
                 }
+                Button(action: savePosterToAlbum) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.down")
+                        Text(L10n.tr("invite.saveToPhotos"))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Color(hex: "#FF6B1A"))
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                }
+                .padding(.bottom, 30)
+                .disabled(posterUIImage == nil)
+                .opacity(posterUIImage == nil ? 0.5 : 1.0)
             }
             Button(action: { showPoster = false }) {
                 Image(systemName: "xmark")
@@ -210,6 +237,12 @@ struct InviteView: View {
             }
             .padding(20)
         }
+    }
+
+    private func savePosterToAlbum() {
+        guard let img = posterUIImage else { return }
+        UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
+        showToast(L10n.tr("invite.savedToPhotos"))
     }
 
     // MARK: - Actions

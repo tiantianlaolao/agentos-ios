@@ -10,6 +10,11 @@ struct MembershipView: View {
     @State private var message: String?
     @State private var selectedProduct: Product?
     @State private var showRenewConfirm = false
+    // Post-register invite-code claim
+    @State private var canClaimInvite = false
+    @State private var claimCodeInput = ""
+    @State private var claiming = false
+    @State private var claimError = ""
 
     private var isMember: Bool { authViewModel.plan != "free" }
     private var isIAPMember: Bool { isMember && purchaseChannel == "apple_iap" }
@@ -28,6 +33,12 @@ struct MembershipView: View {
                 // Status Card
                 statusCard
                     .padding(.horizontal, 16)
+
+                // Post-register invite-code claim — only when canUseInviteCode=true
+                if canClaimInvite {
+                    claimInviteCard
+                        .padding(.horizontal, 16)
+                }
 
                 // Message toast
                 if let msg = message {
@@ -107,6 +118,12 @@ struct MembershipView: View {
         .task {
             await store.loadProducts()
             await fetchUsage()
+            // Check post-register claim eligibility
+            if let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? nil {
+                if let s = await InviteService.shared.getStatus(token: token) {
+                    canClaimInvite = s.canUseInviteCode
+                }
+            }
         }
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
@@ -119,6 +136,79 @@ struct MembershipView: View {
                         }
                     }
             }
+        }
+    }
+
+    // MARK: - Claim invite card
+
+    private var claimInviteCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.tr("invite.applyInviteHint"))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(hex: "#6B3410"))
+            HStack(spacing: 8) {
+                TextField(L10n.tr("invite.applyInputPlaceholder"), text: $claimCodeInput)
+                    .keyboardType(.numberPad)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.white)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "#FFA040"), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .onChange(of: claimCodeInput) { _, newValue in
+                        let digits = newValue.filter(\.isNumber).prefix(6)
+                        if digits != newValue { claimCodeInput = String(digits) }
+                        claimError = ""
+                    }
+                    .disabled(claiming)
+                Button(action: { Task { await applyClaim() } }) {
+                    if claiming {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text(L10n.tr("invite.applySubmit"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(Color(hex: "#FF6B1A"))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .disabled(claimCodeInput.count != 6 || claiming)
+                .opacity((claimCodeInput.count != 6 || claiming) ? 0.5 : 1.0)
+            }
+            if !claimError.isEmpty {
+                Text(claimError).font(.system(size: 12)).foregroundStyle(.red)
+            }
+        }
+        .padding(14)
+        .background(Color(hex: "#FFE5C4"))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "#FFA040"), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func applyClaim() async {
+        claimError = ""
+        let code = claimCodeInput.trimmingCharacters(in: .whitespaces)
+        guard code.range(of: #"^[1-9]\d{5}$"#, options: .regularExpression) != nil else {
+            claimError = L10n.tr("invite.applyFormatErr")
+            return
+        }
+        guard let token = (try? await DatabaseService.shared.getSetting(key: "auth_token")) ?? nil else {
+            return
+        }
+        claiming = true
+        let r = await InviteService.shared.apply(token: token, inviteCode: code)
+        claiming = false
+        if r.ok {
+            canClaimInvite = false
+            claimCodeInput = ""
+            message = L10n.tr("invite.applySuccess")
+            await refreshPlan()
+        } else {
+            claimError = r.error ?? L10n.tr("invite.applyFailed")
         }
     }
 
