@@ -227,14 +227,6 @@ struct LoginView: View {
                                         }
                                     }
                             }
-                            .onAppear {
-                                // Sniff clipboard for invite code on entering register mode
-                                if authViewModel.inviteCode.isEmpty,
-                                   let clipboardText = UIPasteboard.general.string,
-                                   let code = InviteService.extractInviteCode(from: clipboardText) {
-                                    authViewModel.inviteCode = code
-                                }
-                            }
                         }
 
                         // Agreement checkbox (register only)
