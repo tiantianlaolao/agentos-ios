@@ -94,7 +94,7 @@ struct MembershipView: View {
                 .padding(.top, 4)
 
                 // CS link
-                Button("遇到问题？联系灵犀客服") {
+                Button("遇到问题？联系艾嘿客服") {
                     showCSWebView = true
                 }
                 .font(.system(size: 13))
@@ -128,7 +128,7 @@ struct MembershipView: View {
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
                 CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
-                    .navigationTitle("灵犀客服")
+                    .navigationTitle("艾嘿客服")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -214,7 +214,7 @@ struct MembershipView: View {
 
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(isMember ? "★ 灵犀会员" : "免费版")
+            Text(isMember ? "★ 艾嘿会员" : "免费版")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(isMember ? .white : AppTheme.textSecondary)
 
@@ -335,7 +335,7 @@ struct MembershipView: View {
                     Text("续费和取消请在系统设置中操作")
                         .font(.system(size: 13))
                         .foregroundStyle(AppTheme.textTertiary)
-                    Text("设置 → Apple ID → 订阅 → 灵犀会员")
+                    Text("设置 → Apple ID → 订阅 → 艾嘿会员")
                         .font(.system(size: 12))
                         .foregroundStyle(AppTheme.textSecondary)
                 }

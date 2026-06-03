@@ -145,9 +145,9 @@ struct ChangelogDialog: View {
     private var headerTitle: String {
         switch mode {
         case .pre:
-            return isZh ? "灵犀有新版本啦" : "New Version Available"
+            return isZh ? "艾嘿有新版本啦" : "New Version Available"
         case .post:
-            return isZh ? "灵犀升级了，看看新功能" : "What's New in This Version"
+            return isZh ? "艾嘿升级了，看看新功能" : "What's New in This Version"
         }
     }
 

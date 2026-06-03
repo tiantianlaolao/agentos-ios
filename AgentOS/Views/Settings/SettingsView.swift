@@ -123,7 +123,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
                 CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
-                    .navigationTitle("灵犀客服")
+                    .navigationTitle("艾嘿客服")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
@@ -196,7 +196,7 @@ struct SettingsView: View {
                     Text("会员中心")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(authViewModel.plan == "free" ? "免费版" : "灵犀会员")
+                    Text(authViewModel.plan == "free" ? "免费版" : "艾嘿会员")
                         .font(.system(size: 12))
                         .foregroundStyle(authViewModel.plan == "free" ? AppTheme.textTertiary : Color(hex: "#d97706"))
                 }
@@ -1020,7 +1020,7 @@ struct SettingsView: View {
                 Text(" · ")
                     .font(.system(size: 12))
                     .foregroundStyle(AppTheme.textTertiary)
-                Button("灵犀客服") {
+                Button("艾嘿客服") {
                     showCSWebView = true
                 }
                 .font(.system(size: 12))
