@@ -283,7 +283,11 @@ struct SelectableContentView: View {
             ForEach(segments) { segment in
                 switch segment {
                 case .text(let text):
-                    SelectableTextView(text: text)
+                    // Render via MarkdownUI (GFM tables/bold/lists) — was plain
+                    // SelectableTextView (UITextView) which showed raw markdown.
+                    Markdown(text)
+                        .markdownTheme(MarkdownThemeProvider.agentOS)
+                        .textSelection(.enabled)
                 case .code(let language, let code):
                     CodeBlockView(code: code, language: language)
                 }
@@ -369,7 +373,7 @@ struct StreamingBubbleView: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: 6) {
             if showAvatar {
-                AssistantAvatarView(size: .small, animated: false)
+                AssistantAvatarView(size: .small, state: .thinking, animated: false)
             } else {
                 Color.clear.frame(width: 32, height: 32)
             }
