@@ -60,14 +60,12 @@ struct AssistantAvatarView: View {
                         )
                     )
 
-                // Character image - cropped to face area
+                // Character image — new 3D avatars are square (1:1) with a centered
+                // face, so fill the circle directly (old portrait crop/offset removed).
                 avatarImage(named: currentImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    // Scale up to fill width, image is 2:3 so height overflows
-                    .frame(width: size.dimension * 1.3, height: size.dimension * 1.3 * 1.5)
-                    // Offset up to center on face (face is in upper ~35% of image)
-                    .offset(y: size.dimension * 0.15)
+                    .frame(width: size.dimension, height: size.dimension)
                     .opacity(imageOpacity)
             }
             .frame(width: size.dimension, height: size.dimension)
