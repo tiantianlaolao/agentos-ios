@@ -156,7 +156,7 @@ struct SkillStoreView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("回测助手")
+                        Text("交易推演助手")
                             .font(AppTheme.bodyFont.weight(.semibold))
                             .foregroundStyle(AppTheme.textPrimary)
                         Text("13种策略 · 5000+只A股 · AI对话式分析")

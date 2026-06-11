@@ -832,7 +832,7 @@ final class ChatViewModel {
                         if let output = si["output"] as? [String: Any],
                            let actionDict = output["open_backtest_workstation"] as? [String: Any] {
                             backtestAction = BacktestAction(
-                                label: actionDict["label"] as? String ?? "在回测助手查看完整分析",
+                                label: actionDict["label"] as? String ?? "在交易推演助手查看完整分析",
                                 stockCode: actionDict["stock_code"] as? String ?? "",
                                 strategyId: actionDict["strategy_id"] as? String
                             )

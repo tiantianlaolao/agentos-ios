@@ -21,7 +21,7 @@ struct BacktestWorkstationView: View {
                         .scaleEffect(1.2)
                 }
             }
-            .navigationTitle("回测助手")
+            .navigationTitle("交易推演助手")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
