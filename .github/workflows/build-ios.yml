@@ -11,6 +11,11 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: build number = git rev-list --count HEAD. Shallow
+          # checkout made it always 1 (worked for 3.0.3/3.0.4 only because
+          # build numbers just need to be unique per marketing version).
+          fetch-depth: 0
 
       - name: Select latest Xcode
         run: |
