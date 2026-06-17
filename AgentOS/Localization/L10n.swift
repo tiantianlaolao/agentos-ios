@@ -232,7 +232,7 @@ final class L10n {
         "settings.agentCustomComingSoon": "即将支持",
         "settings.directLocalComputer": "本地电脑",
         "settings.directRemoteServer": "远程服务器",
-        "settings.directLocalMobileHint": "请在桌面端安装 AgentOS 并开启 Bridge，手机端通过服务器中转连接本地 Agent。",
+        "settings.directLocalMobileHint": "请在桌面端安装 AIHEY 并开启 Bridge，手机端通过服务器中转连接本地 Agent。",
         "settings.agentConnection": "连接信息",
         "settings.agentUrlLabel": "地址",
         "settings.agentTokenPlaceholder": "输入认证 Token（必填）",
@@ -540,7 +540,7 @@ final class L10n {
         "skills.forBuiltinAgent": "为内置助理添加",
         "skills.forOpenclawAgent": "为 OpenClaw 添加",
         "skills.desktopRequired": "需要桌面端",
-        "skills.desktopRequiredMessage": "安装技能到 OpenClaw 需要在桌面端操作，请打开 AgentOS 桌面客户端进行安装。",
+        "skills.desktopRequiredMessage": "安装技能到 OpenClaw 需要在桌面端操作，请打开 AIHEY 桌面客户端进行安装。",
         "skills.ok": "知道了",
 
         // skillDetail
@@ -559,7 +559,7 @@ final class L10n {
         "skillDetail.uninstall": "卸载",
         "skillDetail.back": "返回",
         "skillDetail.auditOfficial": "官方",
-        "skillDetail.auditOfficialDesc": "AgentOS 团队开发和维护",
+        "skillDetail.auditOfficialDesc": "AIHEY 团队开发和维护",
         "skillDetail.auditReviewed": "已审核",
         "skillDetail.auditReviewedDesc": "经过 Agent 生态社区审核",
         "skillDetail.auditUnreviewed": "未审核",
@@ -768,7 +768,7 @@ final class L10n {
         "settings.agentCustomComingSoon": "Coming soon",
         "settings.directLocalComputer": "Local Computer",
         "settings.directRemoteServer": "Remote Server",
-        "settings.directLocalMobileHint": "Please install AgentOS on your desktop and enable Bridge. Your phone connects to the local agent via the server relay.",
+        "settings.directLocalMobileHint": "Please install AIHEY on your desktop and enable Bridge. Your phone connects to the local agent via the server relay.",
         "settings.agentConnection": "Connection",
         "settings.agentUrlLabel": "URL",
         "settings.agentTokenPlaceholder": "Enter auth token (required)",
@@ -1076,7 +1076,7 @@ final class L10n {
         "skills.forBuiltinAgent": "Add for Built-in Agent",
         "skills.forOpenclawAgent": "Add for OpenClaw",
         "skills.desktopRequired": "Desktop Required",
-        "skills.desktopRequiredMessage": "Installing skills to OpenClaw requires the desktop app. Please open AgentOS desktop client to install.",
+        "skills.desktopRequiredMessage": "Installing skills to OpenClaw requires the desktop app. Please open AIHEY desktop client to install.",
         "skills.ok": "OK",
 
         // skillDetail
@@ -1095,7 +1095,7 @@ final class L10n {
         "skillDetail.uninstall": "Uninstall",
         "skillDetail.back": "Back",
         "skillDetail.auditOfficial": "Official",
-        "skillDetail.auditOfficialDesc": "Developed and maintained by AgentOS team",
+        "skillDetail.auditOfficialDesc": "Developed and maintained by AIHEY team",
         "skillDetail.auditReviewed": "Reviewed",
         "skillDetail.auditReviewedDesc": "Reviewed by agent ecosystem community",
         "skillDetail.auditUnreviewed": "Unreviewed",

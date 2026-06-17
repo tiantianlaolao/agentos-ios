@@ -37,7 +37,7 @@ struct LoginView: View {
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
 
-                        Text("AgentOS")
+                        Text("AIHEY")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundStyle(AppTheme.textPrimary)
                     }

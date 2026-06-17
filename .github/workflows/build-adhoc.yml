@@ -139,7 +139,8 @@ jobs:
 
       - name: Generate manifest.plist + install.html
         run: |
-          VERSION=3.0.0
+          VERSION=$(grep -m1 'MARKETING_VERSION:' project.yml | sed 's/.*"\(.*\)".*/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           IPA_NAME="AgentOS-test-${BUILD_NUM}.ipa"
           mv $RUNNER_TEMP/export/AgentOS.ipa $RUNNER_TEMP/export/$IPA_NAME
           echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
@@ -242,7 +243,7 @@ jobs:
           echo " OTA Install URL (open in iPhone Safari):"
           echo " https://agentos.tybbtech.com:3201/test-install/install.html"
           echo "=========================================="
-          echo " Build: 3.0.0 (${BUILD_NUM})"
+          echo " Build: ${VERSION} (${BUILD_NUM})"
           echo " IPA: ${IPA_NAME}"
           echo "=========================================="
 

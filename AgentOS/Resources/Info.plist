@@ -7,7 +7,7 @@
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundleDisplayName</key>
-	<string>AgentOS</string>
+	<string>AIHEY</string>
 	<key>CFBundleVersion</key>
 	<string>12</string>
 	<key>CFBundleShortVersionString</key>
@@ -36,6 +36,6 @@
 		<string>remote-notification</string>
 	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>AgentOS needs access to save images to your photo library.</string>
+	<string>AIHEY needs access to save images to your photo library.</string>
 </dict>
 </plist>

@@ -1003,7 +1003,7 @@ struct SettingsView: View {
             : "https://www.tybbtech.com/en/privacy-policy"
 
         return VStack(spacing: 6) {
-            Text("AgentOS iOS v\(ChangelogService.shared.currentVersion)")
+            Text("AIHEY iOS v\(ChangelogService.shared.currentVersion)")
                 .font(.system(size: 12))
                 .foregroundStyle(AppTheme.textTertiary)
 

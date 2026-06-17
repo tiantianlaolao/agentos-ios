@@ -236,11 +236,7 @@ struct MembershipView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(isMember ? .white.opacity(0.7) : AppTheme.textTertiary)
 
-                Text("图片 \(u.quotaImage < 0 ? "不限" : "\(u.monthlyImage)张/\(u.quotaImage)张")(本月)")
-                    .font(.system(size: 12))
-                    .foregroundStyle(isMember ? .white.opacity(0.7) : AppTheme.textTertiary)
-
-                Text("每日额度零点重置，图片按月重置")
+                Text("每日额度零点重置")
                     .font(.system(size: 11))
                     .foregroundStyle(isMember ? .white.opacity(0.4) : AppTheme.textTertiary.opacity(0.6))
             }
@@ -265,7 +261,6 @@ struct MembershipView: View {
         let rows: [(label: String, free: String, paid: String)] = [
             ("💬 对话",     "20条/天", "300条/天"),
             ("🔍 搜索",     "3次/天",  "30次/天"),
-            ("🎨 图片",     "30张/月", "60张/月"),
             ("📊 回测",     "3次/天",  "无限次"),
             ("🤖 主动关怀", "不可用",  "智能推送"),
             ("🔑 BYOK",     "不可用",  "自带Key"),
