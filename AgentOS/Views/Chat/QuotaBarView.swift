@@ -8,7 +8,8 @@ struct QuotaBarView: View {
 
     var body: some View {
         Group {
-            if let usage, authViewModel.hasRealLogin, usage.plan == "free", usage.quota.msg >= 0 {
+            if let usage, authViewModel.hasRealLogin, (usage.plan == "free" || usage.planTier == "day"), usage.quota.msg >= 0 {
+                let isDay = usage.planTier == "day"
                 let remaining = max(0, usage.quota.msg - usage.daily.msg)
                 let isLow = remaining <= 3
                 HStack(spacing: 4) {
@@ -16,7 +17,7 @@ struct QuotaBarView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(isLow ? Color(hex: "#E89661") : AppTheme.textTertiary)
                     if isLow {
-                        Text("· 升级会员解锁日常不限")
+                        Text(isDay ? "· 升级月卡解锁更高额度" : "· 升级会员解锁日常不限")
                             .font(.system(size: 11))
                             .foregroundStyle(Color(hex: "#E89661"))
                     }
@@ -45,7 +46,7 @@ struct QuotaBarView: View {
                 if let result = await UsageService.shared.fetch(token: t) {
                     await MainActor.run {
                         self.usage = result
-                        authViewModel.setPlan(plan: result.plan, planExpires: result.planExpires, isByok: result.isByok)
+                        authViewModel.setPlan(plan: result.plan, planExpires: result.planExpires, isByok: result.isByok, planTier: result.planTier)
                     }
                     return
                 }

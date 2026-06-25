@@ -31,6 +31,7 @@ final class AuthViewModel {
     // Membership plan (S1-S6)
     var plan: String = "free"  // "free" | "member"
     var planExpires: Int64?
+    var planTier: String?      // "day" | "month" | "year" | nil (free or legacy member)
     var isByok: Bool = false
 
     /// Cross-view request to switch main tab (e.g. QuotaExceeded modal → settings)
@@ -67,6 +68,7 @@ final class AuthViewModel {
             let storedPlan = try await DatabaseService.shared.getSetting(key: "auth_plan")
             let storedIsByok = try await DatabaseService.shared.getSetting(key: "auth_isByok")
             let storedPlanExpires = try await DatabaseService.shared.getSetting(key: "auth_planExpires")
+            let storedPlanTier = try await DatabaseService.shared.getSetting(key: "auth_planTier")
             isAuthenticated = loggedIn == "true" && token != nil && !(token ?? "").isEmpty
             hasRealLogin = loggedIn == "true"
             savedPhone = storedPhone ?? ""
@@ -74,20 +76,24 @@ final class AuthViewModel {
             plan = storedPlan ?? "free"
             isByok = storedIsByok == "1"
             planExpires = storedPlanExpires.flatMap { Int64($0) }
+            planTier = (storedPlanTier?.isEmpty == false) ? storedPlanTier : nil
         } catch {
             isAuthenticated = false
         }
         hasCheckedAuth = true
     }
 
-    func setPlan(plan: String, planExpires: Int64?, isByok: Bool) {
+    func setPlan(plan: String, planExpires: Int64?, isByok: Bool, planTier: String? = nil) {
         self.plan = plan
         self.planExpires = planExpires
         self.isByok = isByok
+        let resolvedTier = (plan == "free") ? nil : planTier
+        self.planTier = resolvedTier
         Task {
             try? await DatabaseService.shared.setSetting(key: "auth_plan", value: plan)
             try? await DatabaseService.shared.setSetting(key: "auth_isByok", value: isByok ? "1" : "0")
             try? await DatabaseService.shared.setSetting(key: "auth_planExpires", value: planExpires.map { String($0) } ?? "")
+            try? await DatabaseService.shared.setSetting(key: "auth_planTier", value: resolvedTier ?? "")
         }
     }
 
@@ -114,13 +120,15 @@ final class AuthViewModel {
                 let planStr = data["plan"] as? String ?? "free"
                 let isByokVal = data["isByok"] as? Bool ?? false
                 let planExpiresVal = data["planExpires"] as? Int64 ?? (data["planExpires"] as? Double).map { Int64($0) }
-                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt, plan: planStr, isByok: isByokVal, planExpires: planExpiresVal)
+                let planTierVal = data["planTier"] as? String
+                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt, plan: planStr, isByok: isByokVal, planExpires: planExpiresVal, planTier: planTierVal)
                 hasRealLogin = true
                 savedPhone = trimmedPhone
                 userCreatedAt = createdAt
                 plan = planStr
                 isByok = isByokVal
                 planExpires = planExpiresVal
+                planTier = (planStr == "free") ? nil : planTierVal
                 isAuthenticated = true
                 // C8: trial banner
                 if let justExpired = data["planJustExpired"] as? Bool, justExpired {
@@ -180,13 +188,15 @@ final class AuthViewModel {
                 let planStr = data["plan"] as? String ?? "free"
                 let isByokVal = data["isByok"] as? Bool ?? false
                 let planExpiresVal = data["planExpires"] as? Int64 ?? (data["planExpires"] as? Double).map { Int64($0) }
-                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt, plan: planStr, isByok: isByokVal, planExpires: planExpiresVal)
+                let planTierVal = data["planTier"] as? String
+                try await saveAuth(userId: userId, phone: trimmedPhone, token: token, createdAt: createdAt, plan: planStr, isByok: isByokVal, planExpires: planExpiresVal, planTier: planTierVal)
                 hasRealLogin = true
                 savedPhone = trimmedPhone
                 userCreatedAt = createdAt
                 plan = planStr
                 isByok = isByokVal
                 planExpires = planExpiresVal
+                planTier = (planStr == "free") ? nil : planTierVal
                 isAuthenticated = true
                 // C8: trial banner
                 if let granted = data["trialGranted"] as? Bool, granted {
@@ -331,10 +341,12 @@ final class AuthViewModel {
         userCreatedAt = nil
         plan = "free"
         planExpires = nil
+        planTier = nil
         isByok = false
         try? await DatabaseService.shared.setSetting(key: "auth_plan", value: "free")
         try? await DatabaseService.shared.setSetting(key: "auth_isByok", value: "0")
         try? await DatabaseService.shared.setSetting(key: "auth_planExpires", value: "")
+        try? await DatabaseService.shared.setSetting(key: "auth_planTier", value: "")
         resetForm()
     }
 
@@ -360,7 +372,8 @@ final class AuthViewModel {
         createdAt: Int64? = nil,
         plan: String = "free",
         isByok: Bool = false,
-        planExpires: Int64? = nil
+        planExpires: Int64? = nil,
+        planTier: String? = nil
     ) async throws {
         try await DatabaseService.shared.setSetting(key: "auth_userId", value: userId)
         try await DatabaseService.shared.setSetting(key: "auth_phone", value: phone)
@@ -369,6 +382,7 @@ final class AuthViewModel {
         try await DatabaseService.shared.setSetting(key: "auth_plan", value: plan)
         try await DatabaseService.shared.setSetting(key: "auth_isByok", value: isByok ? "1" : "0")
         try await DatabaseService.shared.setSetting(key: "auth_planExpires", value: planExpires.map { String($0) } ?? "")
+        try await DatabaseService.shared.setSetting(key: "auth_planTier", value: (plan == "free") ? "" : (planTier ?? ""))
         if let createdAt {
             try await DatabaseService.shared.setSetting(key: "auth_createdAt", value: String(createdAt))
         }

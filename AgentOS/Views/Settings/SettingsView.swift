@@ -196,7 +196,11 @@ struct SettingsView: View {
                     Text("会员中心")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text(authViewModel.plan == "free" ? "免费版" : "艾嘿会员")
+                    Text(authViewModel.plan == "free" ? "免费版"
+                         : authViewModel.planTier == "day" ? "日会员"
+                         : authViewModel.planTier == "year" ? "年度会员"
+                         : authViewModel.planTier == "month" ? "月度会员"
+                         : "艾嘿会员")
                         .font(.system(size: 12))
                         .foregroundStyle(authViewModel.plan == "free" ? AppTheme.textTertiary : Color(hex: "#d97706"))
                 }

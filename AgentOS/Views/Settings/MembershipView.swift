@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import Combine
 
 struct MembershipView: View {
     @Bindable var authViewModel: AuthViewModel
@@ -15,8 +16,11 @@ struct MembershipView: View {
     @State private var claimCodeInput = ""
     @State private var claiming = false
     @State private var claimError = ""
+    // Drives the day-membership countdown — refreshed every 30s by a timer.
+    @State private var nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
 
     private var isMember: Bool { authViewModel.plan != "free" }
+    private var tier: String? { authViewModel.planTier }
     private var isIAPMember: Bool { isMember && purchaseChannel == "apple_iap" }
     private var isQRMember: Bool { isMember && purchaseChannel != nil && purchaseChannel != "apple_iap" }
     private var planExpires: Int64? { authViewModel.planExpires }
@@ -115,6 +119,9 @@ struct MembershipView: View {
         .background(AppTheme.background)
         .navigationTitle("会员中心")
         .navigationBarTitleDisplayMode(.inline)
+        .onReceive(Timer.publish(every: 30, on: .main, in: .common).autoconnect()) { _ in
+            if tier == "day" { nowMs = Int64(Date().timeIntervalSince1970 * 1000) }
+        }
         .task {
             await store.loadProducts()
             await fetchUsage()
@@ -214,29 +221,36 @@ struct MembershipView: View {
 
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(isMember ? "★ 艾嘿会员" : "免费版")
+            Text(isMember
+                 ? (tier == "day" ? "★ 日会员"
+                    : tier == "year" ? "★ 年度会员"
+                    : tier == "month" ? "★ 月度会员"
+                    : "★ 艾嘿会员")
+                 : "免费版")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(isMember ? .white : AppTheme.textSecondary)
 
             if isMember, let exp = planExpires {
-                Text(daysLeft > 0
-                     ? "到期：\(fmtDate(exp))（还有 \(daysLeft) 天）"
-                     : daysLeft > -3
-                        ? "⚠ 会员已过期，宽限期剩 \(3 + daysLeft) 天"
-                        : "会员已过期")
+                Text(tier == "day"
+                     ? (exp > nowMs ? "到期：\(fmtDateTime(exp))（\(fmtCountdown(exp))）" : "日会员已到期")
+                     : daysLeft > 0
+                        ? "到期：\(fmtDate(exp))（还有 \(daysLeft) 天）"
+                        : daysLeft > -3
+                           ? "⚠ 会员已过期，宽限期剩 \(3 + daysLeft) 天"
+                           : "会员已过期")
                     .font(.system(size: 13))
                     .foregroundStyle(isMember ? .white.opacity(0.9) : AppTheme.textTertiary)
             }
 
             if let u = usage {
                 HStack(spacing: 16) {
-                    Text("对话 \(isMember || u.quotaMsg < 0 ? "不限" : "\(u.dailyMsg)次/\(u.quotaMsg)次")")
+                    Text("对话 \(u.quotaMsg < 0 || (isMember && tier != "day") ? "不限" : "\(u.dailyMsg)次/\(u.quotaMsg)次")")
                     Text("搜索 \(u.quotaSearch < 0 ? "不限" : "\(u.dailySearch)次/\(u.quotaSearch)次")")
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(isMember ? .white.opacity(0.7) : AppTheme.textTertiary)
 
-                Text("每日额度零点重置")
+                Text(tier == "day" ? "对话/搜索额度每日0点刷新（与上方到期时间独立）" : "每日额度零点重置")
                     .font(.system(size: 11))
                     .foregroundStyle(isMember ? .white.opacity(0.4) : AppTheme.textTertiary.opacity(0.6))
             }
@@ -259,9 +273,9 @@ struct MembershipView: View {
 
     private var benefitsGrid: some View {
         let rows: [(label: String, free: String, paid: String)] = [
-            ("💬 对话",     "20条/天", "300条/天"),
-            ("🔍 搜索",     "3次/天",  "30次/天"),
-            ("📊 回测",     "3次/天",  "无限次"),
+            ("💬 对话",     "10条/天", "300条/天"),
+            ("🔍 搜索",     "2次/天",  "30次/天"),
+            ("📊 交易推演", "3次/天",  "无限次"),
             ("🤖 主动关怀", "不可用",  "智能推送"),
             ("🔑 BYOK",     "不可用",  "自带Key"),
         ]
@@ -293,8 +307,8 @@ struct MembershipView: View {
 
     private var pricingSection: some View {
         VStack(spacing: 12) {
-            // Grace period urgent notice
-            if isExpired && graceDaysLeft > 0 {
+            // Grace period urgent notice (day membership has no grace)
+            if isExpired && graceDaysLeft > 0 && tier != "day" {
                 Text("⚠ 会员已过期，宽限期剩 \(graceDaysLeft) 天，请尽快续费！")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.red)
@@ -484,7 +498,7 @@ struct MembershipView: View {
               !token.isEmpty else { return }
         if let data = await UsageService.shared.fetch(token: token) {
             let plan = data.plan == "member_builtin" || data.plan == "member_byok" ? "member" : data.plan
-            authViewModel.setPlan(plan: plan, planExpires: data.planExpires, isByok: data.isByok)
+            authViewModel.setPlan(plan: plan, planExpires: data.planExpires, isByok: data.isByok, planTier: data.planTier)
             await fetchUsage()
         }
     }
@@ -514,6 +528,22 @@ struct MembershipView: View {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy/MM/dd"
         return fmt.string(from: date)
+    }
+
+    // Day-membership expiry = rolling purchase+24h point — show date AND time.
+    private func fmtDateTime(_ ts: Int64) -> String {
+        let date = Date(timeIntervalSince1970: Double(ts) / 1000)
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M/d HH:mm"
+        return fmt.string(from: date)
+    }
+
+    private func fmtCountdown(_ ts: Int64) -> String {
+        let ms = ts - nowMs
+        if ms <= 0 { return "已到期" }
+        let h = ms / 3_600_000
+        let m = (ms % 3_600_000) / 60_000
+        return "剩 \(h)小时\(m)分"
     }
 
     private func newExpiryDate(_ product: Product) -> String {
