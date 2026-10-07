@@ -100,6 +100,8 @@ struct WSMessage: Codable, Sendable {
 
 // MARK: - Payload Types
 
+struct ConnectCapabilities: Codable, Sendable { var coderWorkstation = true }
+
 struct ConnectPayload: Codable, Sendable {
     let mode: ConnectionMode
     var provider: LLMProvider?
@@ -114,6 +116,7 @@ struct ConnectPayload: Codable, Sendable {
     var agentUrl: String?
     var agentToken: String?
     var agentProtocol: String?
+    var capabilities: ConnectCapabilities? = ConnectCapabilities()
 }
 
 struct ConnectedPayload: Codable, Sendable {

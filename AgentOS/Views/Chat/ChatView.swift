@@ -19,6 +19,7 @@ struct ChatView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showTodayScreen = false
     @State private var showBacktestWorkstation = false
+    @State private var coderAction: CoderAction?
 
     var body: some View {
         ZStack {
@@ -168,6 +169,9 @@ struct ChatView: View {
             )
             .presentationDetents([.medium])
         }
+        .fullScreenCover(item: $coderAction) { action in
+            CoderWorkstationView(action: action)
+        }
         .fullScreenCover(isPresented: $showBacktestWorkstation) {
             BacktestWorkstationView()
         }
@@ -302,6 +306,9 @@ struct ChatView: View {
                 }
 
                 Menu {
+                    Button { coderAction = CoderAction() } label: {
+                        Label("造物台", systemImage: "hammer.fill")
+                    }
                     if viewModel.isVaultMode {
                         Button {
                             viewModel.lockVault()
@@ -385,6 +392,7 @@ struct ChatView: View {
                             onBacktestAction: { _ in
                                 showBacktestWorkstation = true
                             },
+                            onCoderAction: { coderAction = $0 },
                             showAvatar: message.role == .assistant && isFirstInAssistantGroup(at: index)
                         )
                     }

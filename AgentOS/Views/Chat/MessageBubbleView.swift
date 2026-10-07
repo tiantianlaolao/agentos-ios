@@ -6,6 +6,7 @@ struct MessageBubbleView: View {
     let onCopy: () -> Void
     let onDelete: () -> Void
     var onBacktestAction: ((BacktestAction) -> Void)?
+    var onCoderAction: ((CoderAction) -> Void)?
     var showAvatar: Bool = false
 
     @State private var selectedImageURL: URL?
@@ -183,6 +184,16 @@ struct MessageBubbleView: View {
                 attachmentViews(isUser: false)
                 if !message.content.isEmpty {
                     SelectableContentView(content: message.content)
+                }
+                if let action = message.coderAction {
+                    Button { onCoderAction?(action) } label: {
+                        Label(action.label, systemImage: "hammer.fill")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(AppTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }.buttonStyle(.plain)
                 }
                 // Backtest workstation action button
                 if let action = message.backtestAction {

@@ -36,6 +36,7 @@ struct AgentOSApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.light)
+                .task { await CoderStore.shared.recover() }
         }
     }
 

@@ -7,6 +7,7 @@ struct SkillStoreView: View {
     @State private var addSkillMode: AddSkillMode?
     @State private var addSkillAgentType: String = "builtin"
     @State private var showBacktestWorkstation = false
+    @State private var showCoder = false
     @State private var applyPublishAlert = false
     @State private var expandedSkills: Set<String> = []
 
@@ -90,6 +91,9 @@ struct SkillStoreView: View {
                     GenerateSkillView(serverUrl: viewModel.serverBaseURL, authToken: viewModel.authToken, onGenerated: { Task { await viewModel.fetchLibrary() } })
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showCoder) {
+            CoderWorkstationView(action: CoderAction())
         }
         .fullScreenCover(isPresented: $showBacktestWorkstation) {
             BacktestWorkstationView()
@@ -188,6 +192,22 @@ struct SkillStoreView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, AppTheme.paddingLarge)
+
+            Button { showCoder = true } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "hammer.fill").font(.system(size: 28))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("造物台").font(AppTheme.bodyFont.weight(.semibold))
+                        Text("说出想法，做成能用的小工具、小游戏和网页")
+                            .font(AppTheme.captionFont).foregroundStyle(AppTheme.textSecondary)
+                        Text("对话创作 · 实时预览 · 分享作品")
+                            .font(AppTheme.smallFont).foregroundStyle(AppTheme.textTertiary)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right")
+                }.foregroundStyle(AppTheme.primary).padding(16)
+                    .background(AppTheme.primary.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            }.buttonStyle(.plain).padding(.horizontal, AppTheme.paddingLarge)
 
             // Placeholder for future workstations
             HStack(spacing: 8) {

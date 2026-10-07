@@ -79,9 +79,10 @@ class StoreService {
             try await AppStore.sync()
             // Check current entitlements after sync
             for await result in Transaction.currentEntitlements {
-                if let transaction = try? checkVerified(result) {
-                    let _ = await verifyWithServer(transaction: transaction, productId: transaction.productID)
-                    await transaction.finish()
+                if let transaction = try? checkVerified(result), productIds.contains(transaction.productID) {
+                    if await verifyWithServer(transaction: transaction, productId: transaction.productID) {
+                        await transaction.finish()
+                    }
                 }
             }
         } catch {
@@ -95,9 +96,10 @@ class StoreService {
     private func listenForTransactionUpdates() -> Task<Void, Never> {
         Task { @MainActor in
             for await result in Transaction.updates {
-                if let transaction = try? checkVerified(result) {
-                    let _ = await verifyWithServer(transaction: transaction, productId: transaction.productID)
-                    await transaction.finish()
+                if let transaction = try? checkVerified(result), productIds.contains(transaction.productID) {
+                    if await verifyWithServer(transaction: transaction, productId: transaction.productID) {
+                        await transaction.finish()
+                    }
                 }
             }
         }

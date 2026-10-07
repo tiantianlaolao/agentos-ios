@@ -8,6 +8,13 @@ struct BacktestAction: Sendable, Equatable {
     let strategyId: String?
 }
 
+struct CoderAction: Sendable, Equatable, Identifiable {
+    var id: String { prompt + "|" + (remix ?? "") }
+    var label = "打开造物台"
+    var prompt = ""
+    var remix: String?
+}
+
 struct ChatMessage: Identifiable, Sendable, Equatable {
     let id: String
     let conversationId: String
@@ -19,6 +26,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
     var isVault: Bool
     /// Transient (not persisted): action button to open backtest workstation
     var backtestAction: BacktestAction?
+    var coderAction: CoderAction?
 
     enum MessageRole: String, Codable, Sendable {
         case user
@@ -34,7 +42,8 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         skillName: String? = nil,
         attachments: [Attachment]? = nil,
         isVault: Bool = false,
-        backtestAction: BacktestAction? = nil
+        backtestAction: BacktestAction? = nil,
+        coderAction: CoderAction? = nil
     ) {
         self.id = id
         self.conversationId = conversationId
@@ -45,6 +54,7 @@ struct ChatMessage: Identifiable, Sendable, Equatable {
         self.attachments = attachments
         self.isVault = isVault
         self.backtestAction = backtestAction
+        self.coderAction = coderAction
     }
 }
 

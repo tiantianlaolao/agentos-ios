@@ -826,9 +826,14 @@ final class ChatViewModel {
                     if parsedAttachments?.isEmpty == true { parsedAttachments = nil }
                 }
                 // Extract backtest action from skillsInvoked
+                var coderAction: CoderAction?
                 var backtestAction: BacktestAction?
                 if let skillsInvoked = payload["skillsInvoked"] as? [[String: Any]] {
                     for si in skillsInvoked {
+                        if let output = si["output"] as? [String: Any],
+                           let action = output["open_coder_workstation"] as? [String: Any] {
+                            coderAction = CoderAction(label: action["label"] as? String ?? "打开造物台", prompt: action["prompt"] as? String ?? "", remix: action["remix"] as? String)
+                        }
                         if let output = si["output"] as? [String: Any],
                            let actionDict = output["open_backtest_workstation"] as? [String: Any] {
                             backtestAction = BacktestAction(
@@ -836,11 +841,10 @@ final class ChatViewModel {
                                 stockCode: actionDict["stock_code"] as? String ?? "",
                                 strategyId: actionDict["strategy_id"] as? String
                             )
-                            break
                         }
                     }
                 }
-                handleStreamDone(fullContent: fullContent, conversationId: convId, attachments: parsedAttachments, backtestAction: backtestAction)
+                handleStreamDone(fullContent: fullContent, conversationId: convId, attachments: parsedAttachments, backtestAction: backtestAction, coderAction: coderAction)
             }
 
         case .skillStart:
@@ -999,7 +1003,7 @@ final class ChatViewModel {
         }
     }
 
-    private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil, backtestAction: BacktestAction? = nil) {
+    private func handleStreamDone(fullContent: String, conversationId: String, attachments: [Attachment]? = nil, backtestAction: BacktestAction? = nil, coderAction: CoderAction? = nil) {
         if let assistantId = currentAssistantId {
             // If vault just closed, mark this response as vault too so it gets cleaned up
             let markAsVault = isVaultMode || vaultClosePending
@@ -1014,7 +1018,8 @@ final class ChatViewModel {
                 content: fullContent,
                 attachments: attachments,
                 isVault: markAsVault,
-                backtestAction: backtestAction
+                backtestAction: backtestAction,
+                coderAction: coderAction
             )
 
             if markAsVault && !isVaultMode {
@@ -1043,7 +1048,9 @@ final class ChatViewModel {
                         conversationId: conversationId,
                         role: .assistant,
                         content: fullContent,
-                        attachments: attachments
+                        attachments: attachments,
+                        backtestAction: backtestAction,
+                        coderAction: coderAction
                     )
                     let updated = messages[idx]
                     Task {
@@ -1054,7 +1061,9 @@ final class ChatViewModel {
                         conversationId: conversationId,
                         role: .assistant,
                         content: fullContent,
-                        attachments: attachments
+                        attachments: attachments,
+                        backtestAction: backtestAction,
+                        coderAction: coderAction
                     )
                     messages.append(msg)
                     Task { try? await DatabaseService.shared.saveMessage(msg) }
