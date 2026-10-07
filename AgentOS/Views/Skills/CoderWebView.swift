@@ -57,7 +57,11 @@ struct CoderWorkstationView: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { model.browser = nil } } }
             }
         }
-        .sheet(isPresented: $model.showCredits, onDismiss: { model.refreshBalance() }) {
+        .sheet(isPresented: $model.showCredits, onDismiss: {
+            let resume = store.shouldResumeCreation
+            store.shouldResumeCreation = false
+            model.refreshBalance(resumePending: resume)
+        }) {
             CoderCreditsView(loadLedger: { try await model.loadLedger() })
         }
         .alert("造物台", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
@@ -172,7 +176,10 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         catch { throw CoderError.message("消耗明细加载失败，请检查网络后重试。") }
     }
 
-    func refreshBalance() { webView?.evaluateJavaScript("typeof refreshBalance==='function' && refreshBalance()", completionHandler: nil) }
+    func refreshBalance(resumePending: Bool = false) {
+        let resume = resumePending ? "true" : "false"
+        webView?.evaluateJavaScript("(async()=>{if(typeof refreshBalance==='function')await refreshBalance();if(\(resume)&&typeof resumeAfterPay==='function')resumeAfterPay();})()", completionHandler: nil)
+    }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loading = false }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { failed(error) }
@@ -223,7 +230,7 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
             do {
                 switch method {
                 case "copy":
-                    guard let text = args["text"] as? String, text.count <= 20000 else { throw CoderError.message("内容过长") }
+                    guard let text = args["text"] as? String, text.count <= 2 * 1024 * 1024 else { throw CoderError.message("内容过长") }
                     UIPasteboard.general.string = text
                 case "open":
                     browser = CoderBrowserItem(url: try httpsURL(args["url"]))

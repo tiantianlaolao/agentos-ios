@@ -13,6 +13,8 @@ final class CoderStore {
     var products: [Product] = []
     var credits: [String: Int] = [:]
     var balance: Int?
+    var dailyBalance: Int?
+    var shouldResumeCreation = false
     var enabled = false
     var loading = false
     var purchasing = false
@@ -57,6 +59,7 @@ final class CoderStore {
             let currentAccount = try? await DatabaseService.shared.getSetting(key: "auth_token")
             guard server == ServerConfig.shared.httpBaseURL, account == currentAccount else { return }
             balance = (result["balance"] as? [String: Any])?["total"] as? Int
+            dailyBalance = (result["balance"] as? [String: Any])?["daily"] as? Int
         } catch {
             let currentAccount = try? await DatabaseService.shared.getSetting(key: "auth_token")
             guard server == ServerConfig.shared.httpBaseURL, account == currentAccount else { return }
@@ -102,9 +105,18 @@ final class CoderStore {
             await transaction.finish()
             balance = (response["balance"] as? [String: Any])?["total"] as? Int
             if response["revoked"] as? Bool == true { message = "这笔购买已退款或撤销。" }
-            else if response["duplicate"] as? Bool != true { message = "积分已到账，可以继续创作了。" }
+            else if response["duplicate"] as? Bool != true {
+                shouldResumeCreation = true
+                message = "积分已到账，可以继续创作了。"
+            }
             return true
         } catch { message = error.localizedDescription; return false }
+    }
+
+    func loadOrders() async throws -> [CoderCreditOrder] {
+        let response = try await request("orders")
+        let data = try JSONSerialization.data(withJSONObject: response)
+        return try JSONDecoder().decode(CoderOrdersResponse.self, from: data).orders
     }
 
     private func request(_ path: String, body: [String: Any]? = nil) async throws -> [String: Any] {
@@ -142,6 +154,16 @@ struct CoderCreditsView: View {
                     Text("积分用于造物台创作和修改作品，与聊天会员额度分开计算。")
                         .foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
                     NavigationLink {
+                        CoderOrdersView()
+                    } label: {
+                        HStack {
+                            Label("充值 / 到账记录", systemImage: "receipt")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }.padding(16).background(AppTheme.primary.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }.disabled(store.purchasing)
+                    NavigationLink {
                         CoderLedgerView(load: loadLedger)
                     } label: {
                         HStack {
@@ -151,6 +173,17 @@ struct CoderCreditsView: View {
                         }.padding(16).background(AppTheme.primary.opacity(0.07))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }.disabled(store.purchasing)
+                    DisclosureGroup("积分说明与会员赠分") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let daily = store.dailyBalance, store.balance != nil {
+                                Text("当前余额包含会员每日积分 \(daily) 分。")
+                            }
+                            Text("新用户注册赠送50积分；会员每日赠送15积分，按现有规则领取，累计上限90。")
+                            Text("扣减顺序：每日额度 → 赠送 → 实付。会员充值赠分已计入商品显示的积分数量。")
+                            Text("一般小修改约3积分、小工具约13积分、小游戏约180积分，仅供估算，实际按创作消耗计费。")
+                            Text("App Store购买的退款由Apple处理。充值记录可查看每笔到账及退款状态。")
+                        }.font(.footnote).foregroundStyle(.secondary).padding(.top, 8)
+                    }
                     Text("充值积分").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
                     if store.loading { ProgressView() }
                     ForEach(store.products) { product in
@@ -269,5 +302,75 @@ struct CoderLedgerView: View {
         defer { loading = false }
         do { groups = try await load() }
         catch { groups = []; message = error.localizedDescription }
+    }
+}
+
+
+struct CoderOrdersResponse: Decodable { let orders: [CoderCreditOrder] }
+struct CoderCreditOrder: Decodable, Identifiable {
+    let id: String
+    let credits: Int
+    let bonus: Int
+    let total: Int
+    let status: String
+    let channel: String?
+    let createdAt: Double
+    let paidAt: Double?
+    let amountYuan: Double?
+    var date: Date { Date(timeIntervalSince1970: (paidAt ?? createdAt) / 1000) }
+    var statusText: String {
+        switch status {
+        case "paid": "已到账"
+        case "refunded": "已退款"
+        case "paying": "处理中"
+        case "created": "未支付"
+        default: "待核对"
+        }
+    }
+}
+struct CoderOrdersView: View {
+    @State private var orders: [CoderCreditOrder] = []
+    @State private var loading = false
+    @State private var message: String?
+    var body: some View {
+        List {
+            if loading { ProgressView("正在加载到账记录…") }
+            else if let message {
+                Text(message).foregroundStyle(.secondary)
+                Button("重试") { Task { await reload() } }
+            } else if orders.isEmpty { Text("还没有充值记录").foregroundStyle(.secondary) }
+            else {
+                Section {
+                    ForEach(orders) { order in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("\(order.total) 积分").font(.headline)
+                                Spacer()
+                                Text(order.statusText).foregroundStyle(.secondary)
+                            }
+                            Text("购买 \(order.credits) + 赠送 \(order.bonus) 积分").font(.subheadline)
+                            Text(order.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                            if order.channel == "APPLE_CREDITS" {
+                                Text("App Store购买 · 实付金额以Apple账单为准").font(.caption).foregroundStyle(.secondary)
+                            } else if let amount = order.amountYuan {
+                                Text("网页充值 · ¥\(amount.formatted())").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, 6)
+                    }
+                } header: { Text("最近20笔充值 · 含赠送积分") }
+                footer: { Text("记录中的积分为该订单原始积分数；已退款订单不代表当前可用余额。注册赠分和会员每日积分不属于充值订单。") }
+            }
+        }
+        .navigationTitle("充值 / 到账记录")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await reload() }
+        .refreshable { await reload() }
+    }
+    @MainActor private func reload() async {
+        guard !loading else { return }
+        loading = true; message = nil
+        defer { loading = false }
+        do { orders = try await CoderStore.shared.loadOrders() }
+        catch { orders = []; message = error.localizedDescription }
     }
 }

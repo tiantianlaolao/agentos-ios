@@ -306,9 +306,6 @@ struct ChatView: View {
                 }
 
                 Menu {
-                    Button { coderAction = CoderAction() } label: {
-                        Label("造物台", systemImage: "hammer.fill")
-                    }
                     if viewModel.isVaultMode {
                         Button {
                             viewModel.lockVault()
