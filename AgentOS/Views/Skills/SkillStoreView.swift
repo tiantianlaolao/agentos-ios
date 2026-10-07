@@ -195,7 +195,7 @@ struct SkillStoreView: View {
 
             Button { showCoder = true } label: {
                 HStack(spacing: 16) {
-                    Image(systemName: "hammer.fill").font(.system(size: 28))
+                    Image("CoderIcon").resizable().scaledToFit().frame(width: 44,height: 44).clipShape(RoundedRectangle(cornerRadius: 11))
                     VStack(alignment: .leading, spacing: 4) {
                         Text("造物台").font(AppTheme.bodyFont.weight(.semibold))
                         Text("说出想法，做成能用的小工具、小游戏和网页")

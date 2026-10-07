@@ -92,6 +92,18 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         if let webView { return webView }
         let config = WKWebViewConfiguration()
         config.websiteDataStore = dataStore
+        config.applicationNameForUserAgent = "AIHEY-Coder/1"
+        let saved = UserDefaults.standard.dictionary(forKey: "coder.preferences.v1") as? [String:String] ?? [:]
+        let encoded = String(data: (try? JSONSerialization.data(withJSONObject: saved)) ?? Data("{}".utf8), encoding: .utf8) ?? "{}"
+        let script = """
+        if(location.hostname==='coder.tybbtech.com' && (location.pathname==='/' || location.pathname==='/index.html')) {
+          const saved=\(encoded), allowed={lc_theme:['light','dark'],lc_model:['deepseek-v4-flash','deepseek-v4-pro'],coder_assist:['0','1']};
+          for(const key in allowed)if(allowed[key].includes(saved[key]))localStorage.setItem(key,saved[key]);
+          const original=Storage.prototype.setItem;
+          Storage.prototype.setItem=function(key,value){original.call(this,key,value);if(this===localStorage&&allowed[key]?.includes(String(value)))window.webkit.messageHandlers.aiheyCoder.postMessage({version:1,id:'preference',method:'preference',args:{key,value:String(value)}});};
+        }
+        """
+        config.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.allowsInlineMediaPlayback = true
         config.userContentController.add(CoderMessageProxy(self), name: "aiheyCoder")
         let view = WKWebView(frame: .zero, configuration: config)
@@ -189,6 +201,18 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         if (error as NSError).code != NSURLErrorCancelled { self.error = "连接中断，请检查网络后重试"; loading = false }
     }
 
+    func openHomeScreenLink(_ action: WKNavigationAction) -> Bool {
+        guard let link = action.request.url, link.scheme == "aihey-home" else { return false }
+        guard let source = action.sourceFrame.request.url,
+              let raw = URLComponents(url:link,resolvingAgainstBaseURL:false)?.queryItems?.first(where:{$0.name == "url"})?.value,
+              let target = URL(string:raw), target.scheme == "https", target.host == "view.tybbtech.com",
+              source.host == target.host, source.path == target.path,
+              target.path.range(of:"^/p/[A-Za-z0-9_-]+/(?:index\\.html)?$",options:.regularExpression) != nil,
+              target.user == nil, target.password == nil, raw.count < 8192 else { return true }
+        UIApplication.shared.open(target)
+        return true
+    }
+
     func isWorkbench(_ url: URL?) -> Bool {
         guard let url, let baseURL else { return false }
         return url.scheme == baseURL.scheme && url.host == baseURL.host && url.port == baseURL.port
@@ -196,6 +220,7 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
 
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { decisionHandler(.cancel); return }
+        if openHomeScreenLink(action) { decisionHandler(.cancel); return }
         if action.targetFrame?.isMainFrame == false { decisionHandler(.allow); return }
         if isWorkbench(url) && ["/", "/index.html", "/app-entry"].contains(url.path) {
             decisionHandler(.allow); return
@@ -229,6 +254,11 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         Task { @MainActor in
             do {
                 switch method {
+                case "preference":
+                    let allowed = ["lc_theme":["light","dark"],"lc_model":["deepseek-v4-flash","deepseek-v4-pro"],"coder_assist":["0","1"]]
+                    guard let key=args["key"] as? String, let value=args["value"] as? String, allowed[key]?.contains(value) == true else { throw CoderError.message("无效设置") }
+                    var saved=UserDefaults.standard.dictionary(forKey:"coder.preferences.v1") as? [String:String] ?? [:]
+                    saved[key]=value;UserDefaults.standard.set(saved,forKey:"coder.preferences.v1")
                 case "copy":
                     guard let text = args["text"] as? String, text.count <= 2 * 1024 * 1024 else { throw CoderError.message("内容过长") }
                     UIPasteboard.general.string = text
@@ -337,6 +367,7 @@ private struct CoderBrowser: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = model.dataStore
+        config.applicationNameForUserAgent = "AIHEY-Coder/1"
         let view = WKWebView(frame: .zero, configuration: config)
         view.navigationDelegate = context.coordinator; view.uiDelegate = context.coordinator
         view.load(URLRequest(url: url)); return view
@@ -347,6 +378,7 @@ private struct CoderBrowser: UIViewRepresentable {
         init(_ model: CoderWebModel) { self.model = model }
         func webView(_ view: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = action.request.url else { decisionHandler(.cancel); return }
+            if model.openHomeScreenLink(action) { decisionHandler(.cancel); return }
             if action.targetFrame?.isMainFrame == false { decisionHandler(.allow); return }
             let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
             if [model.baseURL?.host, "agentos.tybbtech.com"].contains(url.host),

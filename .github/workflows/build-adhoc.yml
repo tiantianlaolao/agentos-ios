@@ -190,17 +190,18 @@ jobs:
             "$RUNNER_TEMP/export/$IPA_NAME" \
             "$RUNNER_TEMP/export/manifest.plist" \
             "$RUNNER_TEMP/export/install.html" \
+            "$RUNNER_TEMP/export/verification.json" \
             $OTA_SSH_USER@$OTA_SSH_HOST:/var/www/test-install/$OTA_SUBDIR/
 
           sshpass -p "$OTA_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no \
             $OTA_SSH_USER@$OTA_SSH_HOST \
-            'ls -la /var/www/test-install/'
+            "python3 - \"$OTA_SUBDIR\"" < scripts/publish-ota.py
 
       - name: Print install URL
         run: |
           echo "=========================================="
           echo " OTA Install URL (open in iPhone Safari):"
-          echo " $INSTALL_URL"
+          echo " https://agentos.tybbtech.com:3201/test-install/install.html"
           echo "=========================================="
           echo " Build: ${VERSION} (${BUILD_NUM})"
           echo " IPA: ${IPA_NAME}"
