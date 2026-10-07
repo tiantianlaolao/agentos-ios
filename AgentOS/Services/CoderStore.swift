@@ -50,10 +50,19 @@ final class CoderStore {
     }
 
     func refreshBalance() async {
+        let server = ServerConfig.shared.httpBaseURL
+        let account = try? await DatabaseService.shared.getSetting(key: "auth_token")
         do {
             let result = try await request("balance")
+            let currentAccount = try? await DatabaseService.shared.getSetting(key: "auth_token")
+            guard server == ServerConfig.shared.httpBaseURL, account == currentAccount else { return }
             balance = (result["balance"] as? [String: Any])?["total"] as? Int
-        } catch { message = error.localizedDescription }
+        } catch {
+            let currentAccount = try? await DatabaseService.shared.getSetting(key: "auth_token")
+            guard server == ServerConfig.shared.httpBaseURL, account == currentAccount else { return }
+            balance = nil
+            message = error.localizedDescription
+        }
     }
 
     func buy(_ product: Product) async {
@@ -119,6 +128,7 @@ final class CoderStore {
 }
 
 struct CoderCreditsView: View {
+    let loadLedger: @MainActor () async throws -> [CoderLedgerGroup]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var store = CoderStore.shared
@@ -131,6 +141,17 @@ struct CoderCreditsView: View {
                     if let balance = store.balance { Text("\(balance) 积分").font(.largeTitle.bold()) }
                     Text("积分用于造物台创作和修改作品，与聊天会员额度分开计算。")
                         .foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
+                    NavigationLink {
+                        CoderLedgerView(load: loadLedger)
+                    } label: {
+                        HStack {
+                            Label("消耗明细", systemImage: "list.bullet.rectangle")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }.padding(16).background(AppTheme.primary.opacity(0.07))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }.disabled(store.purchasing)
+                    Text("充值积分").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
                     if store.loading { ProgressView() }
                     ForEach(store.products) { product in
                         Button { Task { await store.buy(product) } } label: {
@@ -158,5 +179,95 @@ struct CoderCreditsView: View {
             .task { await store.load() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await store.recover(); await store.refreshBalance() } } }
         }.interactiveDismissDisabled(store.purchasing)
+    }
+}
+
+
+struct CoderLedgerResponse: Decodable {
+    let ok: Bool
+    let need: String?
+    let groups: [CoderLedgerGroup]?
+}
+
+struct CoderLedgerGroup: Decodable, Identifiable {
+    let projectId: String?
+    let name: String
+    let total: Int
+    let count: Int
+    let entries: [CoderLedgerEntry]
+    var id: String { projectId ?? "_other" }
+}
+
+struct CoderLedgerEntry: Decodable {
+    let spent: Int
+    let model: String?
+    let at: Double
+    var date: Date { Date(timeIntervalSince1970: at / 1000) }
+    var modelLabel: String {
+        switch model {
+        case "deepseek-v4-pro": "精细模式"
+        case "deepseek-v4-flash": "快速模式"
+        default: "创作消耗"
+        }
+    }
+}
+
+struct CoderLedgerView: View {
+    let load: @MainActor () async throws -> [CoderLedgerGroup]
+    @State private var groups: [CoderLedgerGroup] = []
+    @State private var loading = false
+    @State private var message: String?
+
+    var body: some View {
+        List {
+            if loading {
+                ProgressView("正在加载消耗明细…")
+            } else if let message {
+                Text(message).foregroundStyle(.secondary)
+                Button("重试") { Task { await reload() } }
+            } else if groups.isEmpty {
+                Text("还没有消耗记录").foregroundStyle(.secondary)
+            } else {
+                Section {
+                    ForEach(groups) { group in
+                        DisclosureGroup {
+                            ForEach(Array(group.entries.enumerated()), id: \.offset) { item in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.element.date.formatted(date: .abbreviated, time: .shortened))
+                                        Text(item.element.modelLabel).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text("−\(item.element.spent) 积分").monospacedDigit()
+                                }.font(.subheadline).padding(.vertical, 4)
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(group.name)
+                                    Text("\(group.count) 笔记录").font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text("−\(group.total)").monospacedDigit()
+                            }
+                        }
+                    }
+                } header: {
+                    Text("按作品汇总 · 点开查看每笔消耗")
+                }
+            }
+        }
+        .navigationTitle("消耗明细")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await reload() }
+        .refreshable { await reload() }
+    }
+
+    @MainActor private func reload() async {
+        guard !loading else { return }
+        loading = true; message = nil
+        defer { loading = false }
+        do { groups = try await load() }
+        catch { groups = []; message = error.localizedDescription }
     }
 }

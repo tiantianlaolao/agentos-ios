@@ -8,6 +8,8 @@ struct CoderWorkstationView: View {
     let action: CoderAction
     @Environment(\.dismiss) private var dismiss
     @State private var model = CoderWebModel()
+    @State private var store = CoderStore.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -27,10 +29,26 @@ struct CoderWorkstationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("返回艾嘿") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) { Button { model.showCredits = true } label: { Label("积分", systemImage: "bolt") } }
+                ToolbarItem(placement: .primaryAction) {
+                    Button { model.showCredits = true } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill")
+                            Text(store.balance.map { String($0) } ?? "—").monospacedDigit()
+                        }
+                    }
+                    .accessibilityLabel(store.balance.map { "\($0) 积分，充值与消耗明细" } ?? "积分余额加载中，充值与消耗明细")
+                }
             }
         }
         .task { await model.open(action) }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            store.balance = nil
+            while !Task.isCancelled {
+                await store.refreshBalance()
+                do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            }
+        }
         .sheet(item: $model.shareItem, onDismiss: { model.cleanExports() }) { item in CoderShareSheet(items: item.items) }
         .sheet(item: $model.browser) { item in
             NavigationStack {
@@ -40,7 +58,7 @@ struct CoderWorkstationView: View {
             }
         }
         .sheet(isPresented: $model.showCredits, onDismiss: { model.refreshBalance() }) {
-            CoderCreditsView()
+            CoderCreditsView(loadLedger: { try await model.loadLedger() })
         }
         .alert("造物台", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("知道了") { model.notice = nil }
@@ -108,6 +126,50 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
             request.httpBody = try JSONSerialization.data(withJSONObject: ["token": token, "platform": "ios", "prompt": action.prompt, "remix": action.remix ?? ""])
             makeWebView().load(request)
         } catch { self.error = error.localizedDescription; loading = false }
+    }
+
+    /// Reuse the authenticated workbench cookie and its existing grouped ledger.
+    /// No second login, account token in JavaScript, or cross-environment fallback.
+    func loadLedger() async throws -> [CoderLedgerGroup] {
+        guard !loading, error == nil, let webView, isWorkbench(webView.url) else {
+            throw CoderError.message("暂时无法读取消耗明细，请先打开造物台后重试。")
+        }
+        let script = """
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
+        try {
+            const response = await fetch('/api/credits-ledger', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: '{}', signal: controller.signal
+            });
+            if (!response.ok) throw new Error('ledger unavailable');
+            return JSON.stringify(await response.json());
+        } finally { clearTimeout(timer); }
+        """
+        do {
+            let text: String = try await withCheckedThrowingContinuation { continuation in
+                webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
+                    switch result {
+                    case .success(let value):
+                        guard let text = value as? String else {
+                            continuation.resume(throwing: CoderError.message("消耗明细暂时无法加载，请重试。"))
+                            return
+                        }
+                        continuation.resume(returning: text)
+                    case .failure(let error): continuation.resume(throwing: error)
+                    }
+                }
+            }
+            guard let data = text.data(using: .utf8) else {
+                throw CoderError.message("消耗明细暂时无法加载，请重试。")
+            }
+            let response = try JSONDecoder().decode(CoderLedgerResponse.self, from: data)
+            guard response.ok else {
+                throw CoderError.message(response.need == "login" ? "登录已失效，请返回艾嘿重新登录。" : "消耗明细暂时无法加载，请重试。")
+            }
+            return response.groups ?? []
+        } catch let error as CoderError { throw error }
+        catch { throw CoderError.message("消耗明细加载失败，请检查网络后重试。") }
     }
 
     func refreshBalance() { webView?.evaluateJavaScript("typeof refreshBalance==='function' && refreshBalance()", completionHandler: nil) }
