@@ -21,7 +21,7 @@ with zipfile.ZipFile(ipa) as archive:
     profile_bytes = archive.read(infos[0].removesuffix('Info.plist') + 'embedded.mobileprovision')
 assert info['CFBundleIdentifier'] == 'com.agentosplus.app'
 build = str(info['CFBundleVersion'])
-assert build == os.environ['BUILD_NUM'], 'Exported IPA build number differs from requested build'
+assert build == os.environ['BUILD_NUM'], f'Exported IPA build {build} differs from requested {os.environ["BUILD_NUM"]}'
 version = str(info['CFBundleShortVersionString'])
 profile_path = Path(os.environ['RUNNER_TEMP']) / 'exported.mobileprovision'
 profile_path.write_bytes(profile_bytes)

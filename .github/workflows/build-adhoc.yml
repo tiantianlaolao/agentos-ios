@@ -100,6 +100,9 @@ jobs:
           echo "BACKEND=$BACKEND" >> "$GITHUB_ENV"
           echo "BUILD_NUM=$BUILD_NUM" >> "$GITHUB_ENV"
           echo "BUILD_CONDITIONS=$CONDITIONS" >> "$GITHUB_ENV"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" AgentOS/Resources/Info.plist
+          ACTUAL_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" AgentOS/Resources/Info.plist)
+          [[ "$ACTUAL_BUILD" == "$BUILD_NUM" ]] || exit 1
 
       - name: Build archive for selected backend
         env:
@@ -124,6 +127,7 @@ jobs:
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA (ad-hoc)
+        id: export_ipa
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
@@ -164,6 +168,7 @@ jobs:
         run: python3 scripts/prepare-ota-artifacts.py
 
       - name: Preserve signed package and validation report
+        if: ${{ always() && steps.export_ipa.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: AIHEY-${{ env.BACKEND }}-${{ env.BUILD_NUM }}
