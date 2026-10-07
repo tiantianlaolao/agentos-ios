@@ -17,7 +17,7 @@ final class CoderStore {
 
     private init() {
         listener = Task { @MainActor [weak self] in
-            for await result in Transaction.updates {
+            for await result in StoreKit.Transaction.updates {
                 guard let self else { return }
                 _ = await self.settle(result)
             }
@@ -70,10 +70,10 @@ final class CoderStore {
     }
 
     func recover() async {
-        for await result in Transaction.unfinished { _ = await settle(result) }
+        for await result in StoreKit.Transaction.unfinished { _ = await settle(result) }
     }
 
-    @discardableResult private func settle(_ result: VerificationResult<Transaction>) async -> Bool {
+    @discardableResult private func settle(_ result: VerificationResult<StoreKit.Transaction>) async -> Bool {
         guard case .verified(let transaction) = result, Self.productIDs.contains(transaction.productID) else { return false }
         guard !settling.contains(transaction.id) else { return false }
         settling.insert(transaction.id)
