@@ -1,7 +1,17 @@
-name: Build iOS Ad-Hoc & Deploy OTA (test backend)
+name: Build iOS Ad-Hoc & Deploy OTA
 
 on:
   workflow_dispatch:
+    inputs:
+      backend:
+        description: 验收环境（生产创作包关闭积分购买）
+        type: choice
+        default: test
+        options: [test, production-creation]
+      build_number:
+        description: 经核对的下一构建号
+        required: true
+        type: string
   push:
     tags:
       - 'adhoc-v*'
@@ -11,6 +21,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Select latest Xcode
         run: |
@@ -72,14 +84,24 @@ jobs:
           mkdir -p ~/private_keys
           echo -n "$ASC_API_KEY_BASE64" | base64 --decode -o ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
-      - name: Set build number
+      - name: Select backend and build number
+        env:
+          REQUESTED_BACKEND: ${{ inputs.backend }}
+          REQUESTED_BUILD: ${{ inputs.build_number }}
         run: |
-          BUILD_NUM=$(git rev-list --count HEAD)
-          echo "Build number: $BUILD_NUM"
-          echo "BUILD_NUM=$BUILD_NUM" >> $GITHUB_ENV
-          agvtool new-version -all $BUILD_NUM
+          BACKEND="${REQUESTED_BACKEND:-test}"
+          BUILD_NUM="${REQUESTED_BUILD:-$(git rev-list --count HEAD)}"
+          [[ "$BUILD_NUM" =~ ^[1-9][0-9]{0,3}$ ]] || { echo 'Invalid build number'; exit 1; }
+          case "$BACKEND" in
+            test) CONDITIONS=ADHOC_TEST ;;
+            production-creation) CONDITIONS=CODER_CREATION_ONLY ;;
+            *) echo 'Unknown backend'; exit 1 ;;
+          esac
+          echo "BACKEND=$BACKEND" >> "$GITHUB_ENV"
+          echo "BUILD_NUM=$BUILD_NUM" >> "$GITHUB_ENV"
+          echo "BUILD_CONDITIONS=$CONDITIONS" >> "$GITHUB_ENV"
 
-      - name: Build archive (Release + ADHOC_TEST flag → test backend)
+      - name: Build archive for selected backend
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -88,16 +110,17 @@ jobs:
           xcodebuild archive \
             -scheme AgentOS \
             -project AgentOS.xcodeproj \
-            -archivePath $RUNNER_TEMP/AgentOS.xcarchive \
+            -archivePath "$RUNNER_TEMP/AgentOS.xcarchive" \
             -sdk iphoneos \
             -configuration Release \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            -authenticationKeyID $ASC_KEY_ID \
-            -authenticationKeyIssuerID $ASC_ISSUER_ID \
-            DEVELOPMENT_TEAM=$APPLE_TEAM_ID \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS="ADHOC_TEST" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUM" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="$BUILD_CONDITIONS" \
             COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Export IPA (ad-hoc)
@@ -137,83 +160,14 @@ jobs:
 
           ls -la $RUNNER_TEMP/export/
 
-      - name: Generate manifest.plist + install.html
-        run: |
-          VERSION=$(grep -m1 'MARKETING_VERSION:' project.yml | sed 's/.*"\(.*\)".*/\1/')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          IPA_NAME="AgentOS-test-${BUILD_NUM}.ipa"
-          mv $RUNNER_TEMP/export/AgentOS.ipa $RUNNER_TEMP/export/$IPA_NAME
-          echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
+      - name: Validate exported IPA and prepare versioned OTA page
+        run: python3 scripts/prepare-ota-artifacts.py
 
-          cat > $RUNNER_TEMP/export/manifest.plist <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>items</key>
-            <array>
-              <dict>
-                <key>assets</key>
-                <array>
-                  <dict>
-                    <key>kind</key>
-                    <string>software-package</string>
-                    <key>url</key>
-                    <string>https://agentos.tybbtech.com:3201/test-install/${IPA_NAME}</string>
-                  </dict>
-                </array>
-                <key>metadata</key>
-                <dict>
-                  <key>bundle-identifier</key>
-                  <string>com.agentosplus.app</string>
-                  <key>bundle-version</key>
-                  <string>${VERSION}</string>
-                  <key>kind</key>
-                  <string>software</string>
-                  <key>title</key>
-                  <string>AgentOS Test</string>
-                </dict>
-              </dict>
-            </array>
-          </dict>
-          </plist>
-          PLIST
-
-          BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S UTC')
-          cat > $RUNNER_TEMP/export/install.html <<HTML
-          <!DOCTYPE html>
-          <html lang="zh-CN">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>AgentOS 测试包安装</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px 20px; max-width: 480px; margin: 0 auto; text-align: center; background: #f5f5f7; }
-              h1 { color: #007AFF; margin-bottom: 8px; }
-              .tag { background: #FF9500; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; display: inline-block; }
-              .install { display: inline-block; background: #007AFF; color: white; padding: 18px 48px; border-radius: 14px; text-decoration: none; font-size: 18px; font-weight: 600; margin: 24px 0; box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
-              .install:active { background: #0051D5; }
-              .meta { color: #666; font-size: 14px; line-height: 1.7; background: white; padding: 16px; border-radius: 12px; margin-top: 16px; text-align: left; }
-              .warn { color: #FF3B30; font-size: 13px; margin-top: 16px; }
-            </style>
-          </head>
-          <body>
-            <h1>AgentOS</h1>
-            <p><span class="tag">测试包</span></p>
-            <p>连接 agentos-test 后端</p>
-            <p><a class="install" href="itms-services://?action=download-manifest&amp;url=https://agentos.tybbtech.com:3201/test-install/manifest.plist">安装 Install</a></p>
-            <div class="meta">
-              <strong>版本</strong>: ${VERSION} (build ${BUILD_NUM})<br>
-              <strong>构建时间</strong>: ${BUILD_TIME}<br>
-              <strong>后端</strong>: agentos-test (port 3200)<br>
-              <strong>包名</strong>: ${IPA_NAME}
-            </div>
-            <p class="warn">必须用 Safari 打开此页面。装完后回到桌面 → 设置 → 通用 → VPN 与设备管理 → 信任开发者证书。</p>
-          </body>
-          </html>
-          HTML
-
-          ls -la $RUNNER_TEMP/export/
+      - name: Preserve signed package and validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIHEY-${{ env.BACKEND }}-${{ env.BUILD_NUM }}
+          path: ${{ runner.temp }}/export/
 
       - name: Deploy to OTA server
         env:
@@ -225,13 +179,13 @@ jobs:
 
           sshpass -p "$OTA_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no \
             $OTA_SSH_USER@$OTA_SSH_HOST \
-            'mkdir -p /var/www/test-install && rm -f /var/www/test-install/*.ipa /var/www/test-install/manifest.plist /var/www/test-install/install.html'
+            "mkdir -p /var/www/test-install/$OTA_SUBDIR"
 
           sshpass -p "$OTA_SSH_PASSWORD" scp -o StrictHostKeyChecking=no \
             "$RUNNER_TEMP/export/$IPA_NAME" \
             "$RUNNER_TEMP/export/manifest.plist" \
             "$RUNNER_TEMP/export/install.html" \
-            $OTA_SSH_USER@$OTA_SSH_HOST:/var/www/test-install/
+            $OTA_SSH_USER@$OTA_SSH_HOST:/var/www/test-install/$OTA_SUBDIR/
 
           sshpass -p "$OTA_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no \
             $OTA_SSH_USER@$OTA_SSH_HOST \
@@ -241,7 +195,7 @@ jobs:
         run: |
           echo "=========================================="
           echo " OTA Install URL (open in iPhone Safari):"
-          echo " https://agentos.tybbtech.com:3201/test-install/install.html"
+          echo " $INSTALL_URL"
           echo "=========================================="
           echo " Build: ${VERSION} (${BUILD_NUM})"
           echo " IPA: ${IPA_NAME}"

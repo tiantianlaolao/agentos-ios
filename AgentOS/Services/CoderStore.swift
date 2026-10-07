@@ -5,6 +5,11 @@ import StoreKit
 final class CoderStore {
     static let shared = CoderStore()
     static let productIDs = ["com.agentosplus.coder.credits6", "com.agentosplus.coder.credits100", "com.agentosplus.coder.credits500"]
+    #if CODER_CREATION_ONLY
+    static let purchasesAllowed = false
+    #else
+    static let purchasesAllowed = true
+    #endif
     var products: [Product] = []
     var credits: [String: Int] = [:]
     var balance: Int?
@@ -30,7 +35,7 @@ final class CoderStore {
         defer { loading = false }
         do {
             let config = try await request("apple/products")
-            enabled = config["enabled"] as? Bool == true
+            enabled = Self.purchasesAllowed && (config["enabled"] as? Bool == true)
             credits = [:]
             for row in config["products"] as? [[String: Any]] ?? [] {
                 if let id = row["id"] as? String, Self.productIDs.contains(id), let total = row["total"] as? Int { credits[id] = total }
@@ -52,7 +57,7 @@ final class CoderStore {
     }
 
     func buy(_ product: Product) async {
-        guard enabled, !purchasing, Self.productIDs.contains(product.id), product.type == .consumable else { return }
+        guard Self.purchasesAllowed, enabled, !purchasing, Self.productIDs.contains(product.id), product.type == .consumable else { return }
         purchasing = true; message = nil
         defer { purchasing = false }
         do {
@@ -70,10 +75,12 @@ final class CoderStore {
     }
 
     func recover() async {
+        guard Self.purchasesAllowed else { return }
         for await result in StoreKit.Transaction.unfinished { _ = await settle(result) }
     }
 
     @discardableResult private func settle(_ result: VerificationResult<StoreKit.Transaction>) async -> Bool {
+        guard Self.purchasesAllowed else { return false }
         guard case .verified(let transaction) = result, Self.productIDs.contains(transaction.productID) else { return false }
         guard !settling.contains(transaction.id) else { return false }
         settling.insert(transaction.id)
