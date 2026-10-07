@@ -106,6 +106,7 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         config.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.allowsInlineMediaPlayback = true
         config.userContentController.add(CoderMessageProxy(self), name: "aiheyCoder")
+        config.userContentController.add(CoderMessageProxy(self), name: "aiheyHomeScreen")
         let view = WKWebView(frame: .zero, configuration: config)
         view.navigationDelegate = self; view.uiDelegate = self
         view.isOpaque = false; view.backgroundColor = .clear
@@ -245,7 +246,27 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         return nil
     }
 
+    private func handleHomeScreen(_ message: WKScriptMessage) {
+        guard let body = message.body as? [String:Any], let id=body["id"] as? String, id.count<40 else { return }
+        func respond(_ success: Bool, _ reason: String = "") {
+            message.webView?.callAsyncJavaScript("window.__aiheyHomeReply?.(result)", arguments:["result":["id":id,"ok":success,"error":reason]], in:message.frameInfo, in:.page, completionHandler:nil)
+        }
+        let origin=message.frameInfo.securityOrigin
+        guard origin.protocol == "https", origin.host == "view.tybbtech.com",
+              let raw=body["url"] as? String, raw.count<8192, let target=URL(string:raw),
+              target.scheme == "https", target.host == origin.host, target.port == nil || target.port == 443,
+              target.user == nil, target.password == nil,
+              target.path.range(of:"^/p/[A-Za-z0-9_-]+/(?:index\\.html)?$",options:.regularExpression) != nil else {
+            respond(false,"无法打开这个作品地址");return
+        }
+        Task { @MainActor in
+            let success = await UIApplication.shared.open(target,options:[:])
+            respond(success,success ? "" : "系统未能打开浏览器")
+        }
+    }
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "aiheyHomeScreen" { handleHomeScreen(message); return }
         guard message.frameInfo.isMainFrame, isWorkbench(message.frameInfo.request.url),
               ["/", "/index.html"].contains(message.frameInfo.request.url?.path ?? ""),
               let body = message.body as? [String: Any], body["version"] as? Int == 1,
@@ -367,6 +388,7 @@ private struct CoderBrowser: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = model.dataStore
+        config.userContentController.add(CoderMessageProxy(model),name:"aiheyHomeScreen")
         config.applicationNameForUserAgent = "AIHEY-Coder/1"
         let view = WKWebView(frame: .zero, configuration: config)
         view.navigationDelegate = context.coordinator; view.uiDelegate = context.coordinator
