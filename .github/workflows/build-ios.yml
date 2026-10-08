@@ -66,10 +66,14 @@ jobs:
 
       - name: Set build number
         run: |
-          # Use git commit count as build number (always increases)
-          BUILD_NUM=$(git rev-list --count HEAD)
-          echo "Build number: $BUILD_NUM"
-          agvtool new-version -all $BUILD_NUM
+          # project.yml is synchronized from AgentOS RELEASE.yml before release.
+          BUILD_NUM=$(python3 -c 'import pathlib,re; print(re.search(r"CURRENT_PROJECT_VERSION:.*?(\d+)", pathlib.Path("project.yml").read_text()).group(1))')
+          echo "Build number from release manifest: $BUILD_NUM"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" AgentOS/Resources/Info.plist
+          echo "BUILD_NUM=$BUILD_NUM" >> $GITHUB_ENV
+
+      - name: Validate Coder links without simulator
+        run: python3 scripts/validate-coder-links.py
 
       - name: Build archive
         env:
@@ -123,6 +127,9 @@ jobs:
             -authenticationKeyPath ~/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
             -authenticationKeyID $ASC_KEY_ID \
             -authenticationKeyIssuerID $ASC_ISSUER_ID
+
+      - name: Verify exported version before ASC upload
+        run: python3 scripts/validate-store-ipa.py "$RUNNER_TEMP/export/AgentOS.ipa"
 
       - name: Upload to TestFlight
         env:
