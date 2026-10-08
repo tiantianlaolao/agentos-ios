@@ -32,6 +32,17 @@ assert not profile.get('ProvisionsAllDevices', False)
 assert profile['Entitlements']['application-identifier'].endswith('.com.agentosplus.app')
 assert not profile['Entitlements'].get('get-task-allow', False)
 
+# Verify the signed application, not just the source entitlements or profile.
+import tempfile
+with tempfile.TemporaryDirectory(prefix='aihey-signed-check-') as extracted:
+    with zipfile.ZipFile(ipa) as archive:
+        archive.extractall(extracted)
+    app_path = Path(extracted) / infos[0].removesuffix('/Info.plist')
+    signed = plistlib.loads(subprocess.check_output(['codesign', '-d', '--entitlements', ':-', str(app_path)], stderr=subprocess.PIPE))
+    domains = signed.get('com.apple.developer.associated-domains', [])
+    assert 'applinks:coder.tybbtech.com' in domains, 'Signed App is missing Coder domain association'
+assert profile['Entitlements'].get('com.apple.developer.associated-domains'), 'Profile does not allow Associated Domains'
+
 folder = f'{backend}-{build}-{os.environ["GITHUB_RUN_ID"]}-{os.environ["GITHUB_RUN_ATTEMPT"]}'
 assert re.fullmatch(r'[a-z0-9-]+', folder)
 base = 'https://agentos.tybbtech.com:3201/test-install/' + folder
@@ -51,7 +62,7 @@ page = f'''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <p>请用已登记的 iPhone 在 Safari 中打开。同包名版本会替换当前安装；切换环境后请核对登录账号。</p></html>'''
 (output / 'install.html').write_text(page, encoding='utf8')
 report = {'version': version, 'build': build, 'backend': backend, 'deviceCount': len(profile['ProvisionedDevices']),
-          'profileExpires': profile['ExpirationDate'].isoformat(), 'sha256': hashlib.sha256((output / name).read_bytes()).hexdigest(),
+          'associatedDomains': domains, 'profileExpires': profile['ExpirationDate'].isoformat(), 'sha256': hashlib.sha256((output / name).read_bytes()).hexdigest(),
           'installUrl': base + '/install.html'}
 (output / 'verification.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf8')
 with open(os.environ['GITHUB_ENV'], 'a', encoding='utf8') as env:
