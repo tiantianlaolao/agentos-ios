@@ -45,6 +45,8 @@ targets:
       path: AgentOS/AgentOS.entitlements
       properties:
         aps-environment: production
+        com.apple.developer.associated-domains:
+          - applinks:coder.tybbtech.com
     dependencies:
       - package: GRDB
         product: GRDB

@@ -169,7 +169,7 @@ struct ChatView: View {
             )
             .presentationDetents([.medium])
         }
-        .fullScreenCover(item: $coderAction) { action in
+        .fullScreenCover(item: $coderAction, onDismiss: { CoderLinkRouter.shared.presentPending() }) { action in
             CoderWorkstationView(action: action)
         }
         .fullScreenCover(isPresented: $showBacktestWorkstation) {

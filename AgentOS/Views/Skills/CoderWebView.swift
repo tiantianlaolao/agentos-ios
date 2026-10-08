@@ -8,6 +8,8 @@ struct CoderWorkstationView: View {
     let action: CoderAction
     @Environment(\.dismiss) private var dismiss
     @State private var model = CoderWebModel()
+    @State private var coderLinks = CoderLinkRouter.shared
+    @State private var workstationID = UUID()
     @State private var store = CoderStore.shared
     @Environment(\.scenePhase) private var scenePhase
 
@@ -21,7 +23,7 @@ struct CoderWorkstationView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "wifi.exclamationmark").font(.largeTitle)
                         Text(error).multilineTextAlignment(.center)
-                        Button("重试") { Task { await model.open(action) } }.buttonStyle(.borderedProminent)
+                        Button("重试") { Task { await model.open(model.currentAction ?? action) } }.buttonStyle(.borderedProminent)
                     }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(AppTheme.background)
                 }
             }
@@ -40,6 +42,22 @@ struct CoderWorkstationView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top) {
+            if let request = coderLinks.pending {
+                HStack {
+                    Text("收到分享页的创作请求").font(.footnote)
+                    Button("打开") {
+                        Task {
+                            guard await model.canSwitchFromLink(), let next = coderLinks.takePending(request.id) else { return }
+                            model.browser = nil
+                            await model.open(next)
+                        }
+                    }.disabled(model.loading)
+                    Button("忽略") { coderLinks.pending = nil }
+                }.padding(10).frame(maxWidth: .infinity).background(.regularMaterial)
+            }
+        }
+        .onAppear { coderLinks.entered(workstationID) }
         .task { await model.open(action) }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -67,7 +85,7 @@ struct CoderWorkstationView: View {
         .alert("造物台", isPresented: Binding(get: { model.notice != nil }, set: { if !$0 { model.notice = nil } })) {
             Button("知道了") { model.notice = nil }
         } message: { Text(model.notice ?? "") }
-        .onDisappear { model.webView?.stopLoading() }
+        .onDisappear { model.webView?.stopLoading(); coderLinks.left(workstationID) }
     }
 }
 
@@ -87,6 +105,7 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
     private(set) var dataStore = WKWebsiteDataStore.nonPersistent()
     private var temporaryFiles: [URL] = []
     private var opening = false
+    private(set) var currentAction: CoderAction?
 
     func makeWebView() -> WKWebView {
         if let webView { return webView }
@@ -115,9 +134,19 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
         return view
     }
 
+    func canSwitchFromLink() async -> Bool {
+        guard let webView, isWorkbench(webView.url), !loading else { return false }
+        do {
+            let busy = try await webView.evaluateJavaScript("typeof busy === 'undefined' || busy")
+            guard (busy as? Bool) == false else { notice = "正在创作，请等这一轮完成后再打开分享请求"; return false }
+            return true
+        } catch { notice = "暂时无法切换，请稍后再试"; return false }
+    }
+
     func open(_ action: CoderAction) async {
         guard !opening else { return }
         opening = true
+        currentAction = action
         defer { opening = false }
         loading = true; error = nil
         do {
@@ -140,7 +169,7 @@ final class CoderWebModel: NSObject, WKNavigationDelegate, WKUIDelegate, WKScrip
             var request = URLRequest(url: url.appendingPathComponent("app-entry"))
             request.httpMethod = "POST"; request.timeoutInterval = 30
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(withJSONObject: ["token": token, "platform": "ios", "prompt": action.prompt, "remix": action.remix ?? ""])
+            request.httpBody = try JSONSerialization.data(withJSONObject: ["token": token, "platform": "ios", "prompt": action.prompt, "remix": action.remix ?? "", "startNew": action.startNew])
             makeWebView().load(request)
         } catch { self.error = error.localizedDescription; loading = false }
     }

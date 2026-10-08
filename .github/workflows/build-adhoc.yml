@@ -31,6 +31,9 @@ jobs:
           sudo xcode-select -s "$XCODE_PATH"
           xcodebuild -version
 
+      - name: Validate Coder link parsing and login continuation (no simulator)
+        run: python3 scripts/validate-coder-links.py
+
       - name: Install XcodeGen
         run: brew install xcodegen
 

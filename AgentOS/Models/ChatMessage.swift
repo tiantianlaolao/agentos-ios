@@ -9,10 +9,11 @@ struct BacktestAction: Sendable, Equatable {
 }
 
 struct CoderAction: Sendable, Equatable, Identifiable {
-    var id: String { prompt + "|" + (remix ?? "") }
+    var id: String { prompt + "|" + (remix ?? "") + (startNew ? "|new" : "") }
     var label = "打开造物台"
     var prompt = ""
     var remix: String?
+    var startNew = false
 }
 
 struct ChatMessage: Identifiable, Sendable, Equatable {

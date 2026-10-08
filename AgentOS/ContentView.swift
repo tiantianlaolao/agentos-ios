@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var authViewModel = AuthViewModel()
+    @State private var coderLinks = CoderLinkRouter.shared
 
     var body: some View {
         Group {
@@ -16,6 +17,18 @@ struct ContentView: View {
             } else {
                 LoginView(authViewModel: authViewModel)
             }
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { coderLinks.receive(url) }
+        }
+        .onOpenURL { coderLinks.receive($0) }
+        .onChange(of: authViewModel.isAuthenticated, initial: true) { _, ready in
+            coderLinks.authenticated = ready
+            if ready { coderLinks.presentPending() }
+            else { coderLinks.presented = nil }
+        }
+        .fullScreenCover(item: $coderLinks.presented, onDismiss: { coderLinks.presentPending() }) { request in
+            CoderWorkstationView(action: request.action)
         }
         .task {
             await L10n.shared.loadLocale()

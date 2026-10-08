@@ -92,7 +92,7 @@ struct SkillStoreView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showCoder) {
+        .fullScreenCover(isPresented: $showCoder, onDismiss: { CoderLinkRouter.shared.presentPending() }) {
             CoderWorkstationView(action: CoderAction())
         }
         .fullScreenCover(isPresented: $showBacktestWorkstation) {
