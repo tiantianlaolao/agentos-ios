@@ -34,15 +34,6 @@ struct SettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
-                // Invite friends entry — replaces the deprecated currentModeBar (5-10).
-                // Hidden if not logged in (invite system requires auth).
-                if authViewModel.isLoggedIn {
-                    inviteEntry
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-                }
-
                 // Account section
                 accountSection
                     .padding(.bottom, 8)
@@ -106,20 +97,6 @@ struct SettingsView: View {
         .task {
             await viewModel.loadSettings()
         }
-        .alert(L10n.tr("settings.betaRequired"), isPresented: $showBetaAlert) {
-            TextField(L10n.tr("settings.betaCodePlaceholder"), text: $betaCode)
-                .autocapitalization(.allCharacters)
-            Button(betaLoading ? L10n.tr("settings.betaActivating") : L10n.tr("settings.betaActivate")) {
-                activateBeta()
-            }
-            .disabled(betaLoading)
-            Button(L10n.tr("chat.cancel"), role: .cancel) {
-                betaCode = ""
-                betaError = ""
-            }
-        } message: {
-            Text(betaError.isEmpty ? L10n.tr("settings.betaRequiredDesc") : betaError)
-        }
         .sheet(isPresented: $showCSWebView) {
             NavigationStack {
                 CSWebView(url: ServerConfig.shared.httpBaseURL + "/cs")
@@ -134,53 +111,15 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Invite Entry (replaces deprecated currentModeBar 5-10)
-
-    @State private var showInviteSheet = false
-
-    private var inviteEntry: some View {
-        Button(action: { showInviteSheet = true }) {
-            HStack(spacing: 12) {
-                Text("🎁").font(.system(size: 28))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.tr("settings.inviteFriendsTitle"))
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color(hex: "#6B3410"))
-                    Text(L10n.tr("settings.inviteFriendsSub"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color(hex: "#9A5A2C"))
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(Color(hex: "#C26A1B"))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(LinearGradient(colors: [Color(hex: "#FFE5C4"), Color(hex: "#FFCC8A")],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "#FFA040"), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $showInviteSheet) {
-            InviteView(authViewModel: authViewModel)
-        }
-    }
-
     // MARK: - Account Section
 
     @State private var showLoginSheet = false
     @State private var showCSWebView = false
     @State private var showDeleteAccountAlert = false
     @State private var deleteAccountPassword = ""
-    @State private var showBetaAlert = false
-    @State private var betaCode = ""
-    @State private var betaLoading = false
-    @State private var betaError = ""
     @State private var showComplaintSheet = false
     @State private var personalizationFailMessage = ""
     @State private var showPersonalizationFailAlert = false
-    @State private var pendingAgentId = ""
 
     // MARK: - Membership Entry
 
@@ -496,86 +435,6 @@ struct SettingsView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-        }
-    }
-
-    // MARK: - Beta Gate
-
-    private func checkBetaAndSelect(agentId: String) {
-        let serverUrl = viewModel.serverUrl
-        Task {
-            do {
-                let token = try await DatabaseService.shared.getSetting(key: "auth_token") ?? ""
-                guard !token.isEmpty else {
-                    // No token, show beta alert
-                    await MainActor.run {
-                        pendingAgentId = agentId
-                        showBetaAlert = true
-                    }
-                    return
-                }
-                var request = URLRequest(url: URL(string: "\(serverUrl)/hosted/beta-status")!)
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let hasBeta = json["hasBeta"] as? Bool, hasBeta {
-                    await MainActor.run {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            viewModel.agentId = agentId
-                        }
-                    }
-                } else {
-                    await MainActor.run {
-                        pendingAgentId = agentId
-                        showBetaAlert = true
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    pendingAgentId = agentId
-                    showBetaAlert = true
-                }
-            }
-        }
-    }
-
-    private func activateBeta() {
-        guard !betaCode.isEmpty else { return }
-        let serverUrl = viewModel.serverUrl
-        betaLoading = true
-        betaError = ""
-
-        Task {
-            do {
-                let token = try await DatabaseService.shared.getSetting(key: "auth_token") ?? ""
-                var request = URLRequest(url: URL(string: "\(serverUrl)/hosted/beta-activate")!)
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                request.httpBody = try JSONSerialization.data(withJSONObject: ["code": betaCode.trimmingCharacters(in: .whitespaces)])
-                let (data, _) = try await URLSession.shared.data(for: request)
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let success = json["success"] as? Bool, success {
-                    await MainActor.run {
-                        showBetaAlert = false
-                        betaCode = ""
-                        betaError = ""
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            viewModel.agentId = pendingAgentId
-                        }
-                    }
-                } else {
-                    let errorMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                    await MainActor.run {
-                        betaError = errorMsg ?? L10n.tr("settings.betaFailed")
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    betaError = L10n.tr("settings.betaFailed")
-                }
-            }
-            await MainActor.run { betaLoading = false }
         }
     }
 

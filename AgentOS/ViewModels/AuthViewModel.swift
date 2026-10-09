@@ -9,7 +9,6 @@ final class AuthViewModel {
     var password = ""
     var confirmPassword = ""
     var smsCode = ""
-    var inviteCode = ""
     var isLogin = true
     var isResetMode = false
     var newPassword = ""
@@ -166,18 +165,11 @@ final class AuthViewModel {
         errorMessage = ""
 
         do {
-            var body: [String: String] = [
+            let body: [String: String] = [
                 "phone": trimmedPhone,
                 "password": password,
                 "code": smsCode,
             ]
-            // 5-10: client no longer validates inviteCode format — pass through
-            // whatever user typed (non-empty) and let server be the single source
-            // of truth for format / existence / expiry checks.
-            let trimmedInvite = inviteCode.trimmingCharacters(in: .whitespaces)
-            if !trimmedInvite.isEmpty {
-                body["inviteCode"] = trimmedInvite
-            }
             let result = try await postJSON(endpoint: "/auth/register", body: body)
 
             if let ok = result["ok"] as? Bool, ok,
